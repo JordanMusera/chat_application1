@@ -1,13 +1,20 @@
 import React from 'react';
 import logo from './logo.svg';
 import './App.css';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import LandingPage from './pages/LandingPage';
+import Login from './pages/Login';
+import RegisterPage from './pages/RegisterPage';
 
 function App() {
   return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white gap-10">
-      <h1 className="text-4xl font-bold">Welcome to Simi online chat application</h1>
-      <button className="text-white rounded-xl bg-blue-400 p-3 text-xl">Get started</button>
-    </div>
+     <Router>
+      <Routes>
+        <Route path='/' element={<LandingPage/>}/>
+        <Route path='/login' element={<Login/>}/>
+        <Route path='/register' element={<RegisterPage/>}/>
+      </Routes>
+     </Router>
   );
 }
 

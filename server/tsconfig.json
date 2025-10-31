@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",                  // Modern JS output
+    "module": "CommonJS",                // Node.js module style
+    "moduleResolution": "node",          // Resolves modules like Node
+    "rootDir": "./",                      // Root folder for TS files
+    "outDir": "./dist",                   // Compiled JS output
+    "esModuleInterop": true,              // Allows import express from 'express'
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": ["**/*.ts"]
+}
