@@ -7,8 +7,11 @@ const ProtectedRoute = ({children}:{children:React.ReactNode}) => {
     useEffect(()=>{
         const checkAuth=async()=>{
             try {
-                const res = await fetch("http://localhost:5000/auth/verify",{
-                    credentials:"include"
+                const res = await fetch("http://192.168.0.159:5000/auth/verify",{
+                    headers:{
+                        "Content-Type":"application/json",
+                        "Authorization":`Bearer ${localStorage.getItem("token")}`
+                    }
                 });
 
                 if(res.ok) setIsAuth(true);

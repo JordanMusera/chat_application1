@@ -35,7 +35,7 @@ const Login = () => {
     }
 
     try {
-      const req = await fetch("http://localhost:5000/auth/signin", {
+      const req = await fetch("http://192.168.0.159:5000/auth/signin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -43,12 +43,14 @@ const Login = () => {
           password,
           rememberme,
         }),
-        credentials:"include"
       });
 
       const data: any = await req.json();
       if (req.ok) {
         toast.success(data.message);
+        if(rememberme) localStorage.setItem("token", data.token);
+        else sessionStorage.setItem("token", data.token);
+        
         navigate("/chat");
       } else {
         toast.error(data.message);

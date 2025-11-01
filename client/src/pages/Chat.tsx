@@ -1,11 +1,13 @@
-import React from 'react'
+import React, { useEffect } from "react";
+import { useSocket } from "../hooks/useSocket";
 
 const Chat = () => {
-  return (
-    <div>
-      This is the main chat page
-    </div>
-  )
-}
+  const socket = useSocket();
 
-export default Chat
+  useEffect(() => {
+   
+  }, [socket]);
+  return <div></div>;
+};
+
+export default Chat;

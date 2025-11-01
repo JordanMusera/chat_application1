@@ -36,7 +36,7 @@ export const registerUser = async (req: Request, res: Response) => {
 
 export const signInUser = async (req: Request, res: Response) => {
   try {
-    const { email, password, rememberme } = req.body;
+    const { email, password} = req.body;
 
     if (!email || !password)
       return res.status(400).json({ message: "Provide all fields" });
@@ -53,13 +53,6 @@ export const signInUser = async (req: Request, res: Response) => {
     if (validPassword) {
       const token = await create_jwt(user);
 
-      res.cookie("token", token, {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: false,
-        maxAge: rememberme ? 60 * 60 * 1000 * 24 * 7 : 60 * 60 * 100,
-      });
-
       return res.status(200).json({ message: "Login successful", token });
     } else {
       return res.status(400).json({ message: "Password is invalid" });
@@ -70,7 +63,7 @@ export const signInUser = async (req: Request, res: Response) => {
 };
 
 export const verifyUser = (req: Request, res: Response) => {
-  const token = req.cookies.token;
+  const token = req.headers.authorization?.split(" ")[1]
   if (!token) return res.status(401).json({ message: "Unauthorized" });
 
   try {
