@@ -1,8 +1,10 @@
 import express from "express";
-import { getUsers } from "../controllers/userController";
+import { getSearchUsers, getUser, getUserConv } from "../controllers/userController";
 
 const router = express.Router();
 
-router.get('/fetchUsers',getUsers);
+router.post('/fetchUsers',getUserConv);
+router.get('/getUser',getUser);
+router.post('/getSearchUsers',getSearchUsers);
 
 export default router;

@@ -11,3 +11,13 @@ export const create_jwt = (user:any)=>{
     )
     return token;
 }
+
+export const verifyToken = (token:any)=>{
+    if(!token) return {authorized:false}
+    const decoded = jwt.verify(token,process.env.JWT_SECRET as string) as {
+        id:number,
+        email:string,
+        name:string
+    }
+    return {authorized:false,id:decoded.id,email:decoded.email,name:decoded.name}
+}

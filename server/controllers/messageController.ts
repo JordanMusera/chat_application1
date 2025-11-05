@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import db from "../config/db";
 
 export const getMessagesByChatId = async (req: Request, res: Response) => {
-  const { chat_id } = req.params;
+  const { chat_id } = req.body;
 
   try {
     const [rows] = await db.query(
@@ -19,7 +19,7 @@ export const getMessagesByChatId = async (req: Request, res: Response) => {
       WHERE m.chat_id = ?
       ORDER BY m.timestamp ASC
       `,
-      [1]
+      [chat_id]
     );
 
     console.log(rows)
