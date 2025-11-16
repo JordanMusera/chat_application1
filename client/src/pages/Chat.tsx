@@ -1,15 +1,31 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useSocket } from "../hooks/useSocket";
 import { data } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "react-toastify";
+import { CloseOutlined, PaperClipOutlined } from "@ant-design/icons";
+import {
+  FileImageOutlined,
+  FilePdfOutlined,
+  FileWordOutlined,
+  FileExcelOutlined,
+  FileZipOutlined,
+  FileOutlined,
+} from "@ant-design/icons";
 
+interface IFile {
+  name: string;
+  url: string;
+  type: string;
+  public_id: string;
+}
 interface Message {
   message_id: number;
   chat_id: number;
   sender_id: number;
   sender_name: string;
   content: string;
+  file: IFile;
   timestamp: string;
 }
 
@@ -42,6 +58,14 @@ const Chat = () => {
   const [searchContent, setSearchContent] = useState<User[]>([]);
   const [newConvId, setNewConvId] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [previewFile, setPreviewFile] = useState<{
+    file: File;
+    name: string;
+    type: string;
+    url: string;
+  } | null>(null);
 
   useEffect(() => {
     getUser();
@@ -97,11 +121,9 @@ const Chat = () => {
 
         return prev;
       });
-
-      
     };
 
-    const handleNewMessage = (data:Message) =>{
+    const handleNewMessage = (data: Message) => {
       toast.info(`${data.sender_name}: ${data.content}`);
 
       setUsers((prevUsers: User[]) => {
@@ -128,7 +150,7 @@ const Chat = () => {
           return [newUser, ...prevUsers];
         }
       });
-    }
+    };
 
     getUsersConv();
     socket.on("receive_message", handleReceiveMessage);
@@ -224,25 +246,73 @@ const Chat = () => {
     }
   };
 
-  const handleSendBE = () => {
+  const handleSendBE = async () => {
     if (!input.trim()) return;
-    const messageData: any = {
-      newConvId: newConvId,
-      chat_id: selectedChat?.chat_id,
-      sender_id: user.id,
-      receiver_id: receiverId,
-      content: input.trim(),
-      timestamp: new Date().toISOString(),
-    };
-    socket?.emit("send_message", messageData);
-    if (chatId === 0) {
-      setSelectedChat((prev) =>
-        prev
-          ? { ...prev, messages: [...prev.messages, messageData as any] }
-          : prev
-      );
+
+    const formData = new FormData();
+    formData.append("newConvId", newConvId || "");
+    formData.append("chat_id", (selectedChat?.chat_id || 0).toString());
+    formData.append("sender_id", user.id.toString());
+    formData.append("receiver_id", receiverId.toString());
+    formData.append("content", input.trim());
+
+    if (previewFile) {
+      formData.append("file", previewFile.file, previewFile.name);
+      formData.append("file_type", previewFile.type);
     }
-    setInput("");
+
+    try {
+      const res = await fetch(
+        "http://192.168.0.131:5000/messages/postMessage",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await res.json();
+      console.log(data);
+
+      if (chatId === 0) {
+        setSelectedChat((prev) =>
+          prev ? { ...prev, messages: [...prev.messages, data.message] } : prev
+        );
+      }
+
+      setInput("");
+    } catch (error) {
+      console.error("Send message error:", error);
+    }
+  };
+
+  const handleAttachClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileUpload = (e: any) => {
+    e.preventDefault();
+    const file = e.target.files?.[0];
+    const url = URL.createObjectURL(file);
+    setPreviewFile({
+      file: file,
+      name: file.name,
+      type: file.type,
+      url,
+    });
+  };
+
+  const getFileIcon = (type: string) => {
+    if (type.startsWith("image/"))
+      return <FileImageOutlined className="text-3xl text-blue-400" />;
+    if (type === "application/pdf")
+      return <FilePdfOutlined className="text-3xl text-red-500" />;
+    if (type.includes("word"))
+      return <FileWordOutlined className="text-3xl text-blue-600" />;
+    if (type.includes("excel"))
+      return <FileExcelOutlined className="text-3xl text-green-600" />;
+    if (type.includes("zip"))
+      return <FileZipOutlined className="text-3xl text-yellow-500" />;
+    return <FileOutlined className="text-3xl text-gray-300" />;
   };
 
   return (
@@ -333,11 +403,37 @@ const Chat = () => {
                   <div
                     className={`px-4 py-2 rounded-3xl max-w-[80%] text-sm sm:text-base break-words shadow-sm ${
                       msg.sender_id === user.id
-                        ? "bg-blue-600 text-white"
+                        ? "bg-blue-500 text-white"
                         : "bg-gray-300 text-black"
                     }`}
                   >
+                    {msg.file && (
+                      <div className="my-2">
+                        {msg.file.type.startsWith("image/") ? (
+                          <img
+                            src={msg.file.url}
+                            className="w-64 rounded"
+                            alt="Loading..."
+                          />
+                        ) : msg.file.type.startsWith("video/") ? (
+                          <video
+                            src={msg.file.url}
+                            controls
+                            className="w-full max-w-lg rounded-lg shadow-md"
+                          />
+                        ) : (
+                          <div className="flex gap-2 items-center">
+                            {getFileIcon(msg.file.type)}
+                            <span className="text-sm text-blue-800">
+                              {msg.file.name}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <p>{msg.content}</p>
+
                     <span className="block text-xs mt-1 opacity-70 text-right">
                       {new Date(msg.timestamp).toLocaleTimeString([], {
                         hour: "2-digit",
@@ -349,7 +445,45 @@ const Chat = () => {
               ))}
             </div>
 
+            {previewFile && (
+              <div className="h-max flex items-center bg-gray-800 p-2 w-full justify-between">
+                <>
+                  {previewFile.type.startsWith("image/") ? (
+                    <div className="flex gap-2 text-white text-sm items-center">
+                      <img
+                        src={previewFile.url}
+                        alt="preview"
+                        className="w-10 h-10 object-cover rounded"
+                      />
+                      <span>{previewFile.name}</span>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 text-white text-sm items-center">
+                      {getFileIcon(previewFile.type)}
+                      <span>{previewFile.name}</span>
+                    </div>
+                  )}
+                </>
+
+                <CloseOutlined
+                  className="text-white text-lg cursor-pointer ml-4"
+                  onClick={() => setPreviewFile(null)}
+                />
+              </div>
+            )}
+
             <div className="flex items-center gap-3 p-3 bg-gray-800 flex-shrink-0 sticky bottom-0 z-10 pb-[env(safe-area-inset-bottom)]">
+              <PaperClipOutlined
+                className="text-2xl text-white"
+                onClick={handleAttachClick}
+              />
+              <input
+                type="file"
+                className="hidden"
+                ref={fileInputRef}
+                onChange={(e) => handleFileUpload(e)}
+                title="file_upload"
+              />
               <input
                 type="text"
                 placeholder="Type message..."
