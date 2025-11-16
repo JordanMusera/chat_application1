@@ -129,12 +129,16 @@ export const postMessage = async (req: Request, res: Response) => {
       sender_id,
       receiver_id,
       content: content.trim(),
-      file: {
+
+      ...(file && uploadedFile?{
+         file: {
         name: file?.originalname,
         url: uploadedFile?.url,
         type: file_type,
         public_id: uploadedFile?.public_id,
       },
+      }:{}),
+     
       timestamp: new Date().toISOString(),
     };
 

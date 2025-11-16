@@ -1,9 +1,12 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useEffect, useRef, useState } from "react";
 import { useSocket } from "../hooks/useSocket";
-import { data } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
-import { toast } from "react-toastify";
-import { CloseOutlined, PaperClipOutlined } from "@ant-design/icons";
+import {
+  CloseOutlined,
+  MessageOutlined,
+  PaperClipOutlined,
+} from "@ant-design/icons";
 import {
   FileImageOutlined,
   FilePdfOutlined,
@@ -12,6 +15,9 @@ import {
   FileZipOutlined,
   FileOutlined,
 } from "@ant-design/icons";
+import { notification } from "antd";
+import { message as antdMessage } from "antd";
+import { toast } from "react-toastify";
 
 interface IFile {
   name: string;
@@ -124,7 +130,7 @@ const Chat = () => {
     };
 
     const handleNewMessage = (data: Message) => {
-      toast.info(`${data.sender_name}: ${data.content}`);
+      show_notification(data);
 
       setUsers((prevUsers: User[]) => {
         const existing = prevUsers.find((u) => u.chat_id === data.chat_id);
@@ -315,6 +321,34 @@ const Chat = () => {
     return <FileOutlined className="text-3xl text-gray-300" />;
   };
 
+  const show_notification = (data: Message) => {
+    toast(
+      <div
+        className="flex gap-2 items-center"
+        onClick={() => selectChat(data.chat_id, data.sender_id)}
+      >
+        <MessageOutlined className="flex text-blue-500 text-2xl" />
+
+        <div className="flex flex-col items-center">
+          <span className="font-semibold text-gray-800 text-sm">
+            {data.sender_name}
+          </span>
+          <span className="text-gray-600 text-sm break-words">
+            {data.content}
+          </span>
+        </div>
+      </div>,
+      {
+        position: "top-right",
+        autoClose: 4000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      }
+    );
+  };
+
   return (
     <div className="flex flex-col md:flex-row h-[100dvh] bg-gray-100 relative">
       <div
@@ -393,56 +427,104 @@ const Chat = () => {
                 paddingBottom: "calc(5rem + env(safe-area-inset-bottom))",
               }}
             >
-              {selectedChat.messages.map((msg) => (
-                <div
-                  key={msg.message_id}
-                  className={`flex ${
-                    msg.sender_id === user.id ? "justify-end" : "justify-start"
-                  }`}
-                >
+              {selectedChat.messages.map((msg) => {
+                const isSender = msg.sender_id === user.id;
+
+                return (
                   <div
-                    className={`px-4 py-2 rounded-3xl max-w-[80%] text-sm sm:text-base break-words shadow-sm ${
-                      msg.sender_id === user.id
-                        ? "bg-blue-500 text-white"
-                        : "bg-gray-300 text-black"
+                    key={msg.message_id}
+                    className={`flex mb-4 ${
+                      isSender ? "justify-end" : "justify-start"
                     }`}
                   >
-                    {msg.file && (
-                      <div className="my-2">
-                        {msg.file.type.startsWith("image/") ? (
-                          <img
-                            src={msg.file.url}
-                            className="w-64 rounded"
-                            alt="Loading..."
-                          />
-                        ) : msg.file.type.startsWith("video/") ? (
-                          <video
-                            src={msg.file.url}
-                            controls
-                            className="w-full max-w-lg rounded-lg shadow-md"
-                          />
-                        ) : (
-                          <div className="flex gap-2 items-center">
-                            {getFileIcon(msg.file.type)}
-                            <span className="text-sm text-blue-800">
-                              {msg.file.name}
-                            </span>
-                          </div>
-                        )}
+                    <div
+                      className={`
+                              px-4 py-3
+                              max-w-[75%]
+                              rounded-2xl
+                              transition-all duration-200
+                              shadow-[0_4px_12px_rgba(0,0,0,0.10)]
+                              hover:shadow-[0_6px_18px_rgba(0,0,0,0.16)]
+                              ${
+                                isSender
+                                  ? "bg-gradient-to-b from-green-600 to-green-800 text-white"
+                                  : "bg-white text-gray-900 border border-gray-100"
+                              }
+                            `}
+                    >
+                      {msg.file && (
+                        <div className="mb-3">
+                          {msg.file.type?.startsWith("image/") && (
+                            <img
+                              src={msg.file.url}
+                              className="
+                              rounded-xl
+                              w-full
+                              max-w-[300px]
+                              max-h-[350px]
+                              object-cover
+                              shadow-md
+                            "
+                              alt="attachment"
+                            />
+                          )}
+
+                          {msg.file.type?.startsWith("video/") && (
+                            <div className="w-full max-w-[500px]">
+                              <video
+                                src={msg.file.url}
+                                controls
+                                className="
+                                rounded-xl
+                                w-full
+                                max-h-[500px]
+                                object-cover
+                                shadow-lg"
+                              />
+                            </div>
+                          )}
+
+                          {msg.file.type?.startsWith("audio/") && (
+                            <audio
+                              src={msg.file.url}
+                              controls
+                              className="w-full rounded-lg"
+                            />
+                          )}
+
+                          {!msg.file.type?.startsWith("image/") &&
+                            !msg.file.type?.startsWith("video/") &&
+                            !msg.file.type?.startsWith("audio/") && (
+                              <div className="flex items-center gap-2 bg-gray-100 p-3 rounded-xl">
+                                {getFileIcon(msg.file.type)}
+                                <span className="text-blue-700 text-sm font-medium break-all">
+                                  {msg.file.name}
+                                </span>
+                              </div>
+                            )}
+                        </div>
+                      )}
+
+                      {msg.content && (
+                        <p className="leading-relaxed text-[15px] whitespace-pre-wrap break-words">
+                          {msg.content}
+                        </p>
+                      )}
+
+                      <div
+                        className={`text-[11px] mt-2 opacity-60 ${
+                          isSender ? "text-right" : "text-left"
+                        }`}
+                      >
+                        {new Date(msg.timestamp).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </div>
-                    )}
-
-                    <p>{msg.content}</p>
-
-                    <span className="block text-xs mt-1 opacity-70 text-right">
-                      {new Date(msg.timestamp).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {previewFile && (
