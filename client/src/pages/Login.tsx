@@ -35,7 +35,7 @@ const Login = () => {
     }
 
     try {
-      const req = await fetch("http://192.168.0.159:5000/auth/signin", {
+      const req = await fetch("http://192.168.0.131:5000/auth/signin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

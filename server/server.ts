@@ -13,10 +13,13 @@ const app = express();
 
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://192.168.0.159:3000"],
+    origin: ["http://localhost:3000", "http://192.168.0.131:3000"],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
 app.use(express.json());
 app.use(cookieParser());
 app.use("/auth", authRoutes);
@@ -26,13 +29,21 @@ app.use("/messages", messageRoutes);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:3000", "http://192.168.0.159:3000"],
+    origin: ["http://localhost:3000", "http://192.168.0.131:3000"],
     credentials: true,
   },
 });
 
+const onlineUsers = new Map<number,string>();
+
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
+
+  socket.on("register",(userId:number)=>{
+    onlineUsers.set(userId,socket.id);
+    socket.join(`user_${userId}`);
+    console.log(`User ${userId} joined their personal room`);
+  })
 
   socket.on("join_chat", (chatId) => {
     socket.join(chatId.toString());
@@ -41,6 +52,8 @@ io.on("connection", (socket) => {
 
   socket.on("send_message", async (data) => {
     const { chat_id, sender_id, receiver_id, content } = data;
+
+    console.log(data);
 
     if (!receiver_id || !sender_id || !content || !content.trim()) {
       console.error("Invalid message data:", data);
@@ -73,9 +86,13 @@ io.on("connection", (socket) => {
         [activeChatId, sender_id, content.trim()]
       );
 
+       const [row] = await db.query<any>("SELECT name FROM users WHERE id=?",[sender_id]);
+        const sender_name = row[0].name;
+
       const messageData = {
         id: msgResult.insertId,
         chat_id: activeChatId,
+        sender_name,
         sender_id,
         receiver_id,
         content: content.trim(),
@@ -83,6 +100,7 @@ io.on("connection", (socket) => {
       };
 
       io.to(activeChatId.toString()).emit("receive_message", messageData);
+      io.to(`user_${receiver_id}`).emit("newMessage", messageData);
       console.log("Message saved and emitted:", messageData);
     } catch (error) {
       console.error("Error inserting message:", error);
