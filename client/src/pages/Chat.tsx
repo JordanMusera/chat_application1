@@ -4,7 +4,9 @@ import { useSocket } from "../hooks/useSocket";
 import { v4 as uuidv4 } from "uuid";
 import {
   CloseOutlined,
+  EllipsisOutlined,
   MessageOutlined,
+  MoreOutlined,
   PaperClipOutlined,
 } from "@ant-design/icons";
 import {
@@ -15,9 +17,11 @@ import {
   FileZipOutlined,
   FileOutlined,
 } from "@ant-design/icons";
-import { notification } from "antd";
+import { Dropdown, Menu, notification } from "antd";
 import { message as antdMessage } from "antd";
 import { toast } from "react-toastify";
+import { API_URL } from "../constants/api";
+import MyDropdown from "../components/MyDropdown";
 
 interface IFile {
   name: string;
@@ -72,6 +76,11 @@ const Chat = () => {
     type: string;
     url: string;
   } | null>(null);
+
+  const menu_items = [
+  { key: "1", label: "Create group" },
+  { key: "2", label: "Profile" },
+];
 
   useEffect(() => {
     getUser();
@@ -171,7 +180,7 @@ const Chat = () => {
   const search = async () => {
     try {
       const res = await fetch(
-        "http://192.168.0.131:5000/users/getSearchUsers",
+        `${API_URL}/users/getSearchUsers`,
         {
           method: "POST",
           headers: {
@@ -188,7 +197,7 @@ const Chat = () => {
   };
 
   const getUser = async () => {
-    const res = await fetch("http://192.168.0.131:5000/users/getUser", {
+    const res = await fetch(`${API_URL}/users/getUser`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -200,7 +209,7 @@ const Chat = () => {
   };
 
   const getUsersConv = async () => {
-    const res = await fetch("http://192.168.0.131:5000/users/fetchUsers", {
+    const res = await fetch(`${API_URL}/users/fetchUsers`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: user.id }),
@@ -212,7 +221,7 @@ const Chat = () => {
   const selectChat = async (chatId: number, userId: number) => {
     setChatId(chatId);
     setReceiverId(userId);
-    const res = await fetch("http://192.168.0.131:5000/messages/getMessages", {
+    const res = await fetch(`${API_URL}/messages/getMessages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: chatId }),
@@ -269,7 +278,7 @@ const Chat = () => {
 
     try {
       const res = await fetch(
-        "http://192.168.0.131:5000/messages/postMessage",
+        `${API_URL}/messages/postMessage`,
         {
           method: "POST",
           body: formData,
@@ -349,6 +358,8 @@ const Chat = () => {
     );
   };
 
+  
+
   return (
     <div className="flex flex-col md:flex-row h-[100dvh] bg-gray-100 relative">
       <div
@@ -356,12 +367,17 @@ const Chat = () => {
         ${menuOpen || !selectedChat ? "translate-x-0" : "-translate-x-full"} 
         md:translate-x-0`}
       >
-        <input
+        <div className="flex gap-2">
+           <input
           type="text"
           placeholder="Search here"
           className="w-full p-2 rounded-xl bg-gray-700 text-white placeholder-gray-400 focus:outline-none"
           onChange={(e) => setSearchWord(e.target.value)}
         />
+        <MyDropdown/>
+
+        </div>
+       
         <hr className="my-3 border-gray-600" />
         <div className="flex-1 overflow-y-auto space-y-1">
           {(searchWord.length === 0 ? users : searchContent).map((user) => (

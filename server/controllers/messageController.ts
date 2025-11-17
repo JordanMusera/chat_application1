@@ -55,8 +55,7 @@ export const getMessagesByChatId = async (req: Request, res: Response) => {
 
 export const postMessage = async (req: Request, res: Response) => {
   const io = getIO();
-  const { chat_id, sender_id, receiver_id, content, newConvId, file_type } =
-    req.body;
+  const { chat_id, sender_id, receiver_id, content, newConvId, file_type } = req.body;
   const file = req.file;
 
   if (!receiver_id || !sender_id || !content || !content.trim()) {
@@ -76,49 +75,32 @@ export const postMessage = async (req: Request, res: Response) => {
 
       await db.query(
         "INSERT INTO chatmembers (chat_id, user_id) VALUES (?, ?), (?, ?)",
-        [activeChatId, sender_id, activeChatId, receiver_id]
+        [activeChatId, Number(sender_id), activeChatId, Number(receiver_id)]
       );
 
-      io.to(`user_${sender_id}`).emit("chat_created", {
-        chat_id: activeChatId,
-      });
+      io.to(`user_${sender_id}`).emit("chat_created", { chat_id: activeChatId });
     }
 
     let uploadedFile: { url: string; public_id: string } | null = null;
     if (file) {
-      const result = await uploadFileToCloudinary(
-        file.buffer,
-        file.originalname
-      );
-
-      if ("success" in result && result.success === false) {
-        console.error("Cloudinary upload failed:", result);
-      } else {
+      const result = await uploadFileToCloudinary(file.buffer, file.originalname);
+      if (!("success" in result && result.success === false)) {
         uploadedFile = result as unknown as { url: string; public_id: string };
-        console.log(result);
       }
     }
 
     const [msgResult] = await db.query<any>(
       "INSERT INTO messages (chat_id, sender_id, content, timestamp) VALUES (?, ?, ?, NOW())",
-      [activeChatId, sender_id, content.trim()]
+      [activeChatId, Number(sender_id), content.trim()]
     );
 
-    const [row] = await db.query<any>("SELECT name FROM users WHERE id=?", [
-      sender_id,
-    ]);
+    const [row] = await db.query<any>("SELECT name FROM users WHERE id=?", [Number(sender_id)]);
     const sender_name = row[0].name;
 
     if (file) {
       await db.query<any>(
         "INSERT INTO message_files (message_id,name,url,type,public_id) VALUES (?,?,?,?,?)",
-        [
-          msgResult.insertId,
-          file.originalname,
-          uploadedFile?.url,
-          file_type,
-          uploadedFile?.public_id,
-        ]
+        [msgResult.insertId, file.originalname, uploadedFile?.url, file_type, uploadedFile?.public_id]
       );
     }
 
@@ -126,19 +108,19 @@ export const postMessage = async (req: Request, res: Response) => {
       id: msgResult.insertId,
       chat_id: activeChatId,
       sender_name,
-      sender_id,
-      receiver_id,
+      sender_id: Number(sender_id),
+      receiver_id: Number(receiver_id),
       content: content.trim(),
-
-      ...(file && uploadedFile?{
-         file: {
-        name: file?.originalname,
-        url: uploadedFile?.url,
-        type: file_type,
-        public_id: uploadedFile?.public_id,
-      },
-      }:{}),
-     
+      ...(file && uploadedFile
+        ? {
+            file: {
+              name: file.originalname,
+              url: uploadedFile.url,
+              type: file_type,
+              public_id: uploadedFile.public_id,
+            },
+          }
+        : {}),
       timestamp: new Date().toISOString(),
     };
 
@@ -151,3 +133,4 @@ export const postMessage = async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
+

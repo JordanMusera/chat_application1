@@ -1,31 +1,39 @@
 import React, { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom';
+import { API_URL } from '../constants/api';
 
-const ProtectedRoute = ({children}:{children:React.ReactNode}) => {
-    const [isAuth,setIsAuth] = useState<boolean|null>(null);
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const [isAuth, setIsAuth] = useState<boolean | null>(null);
 
-    useEffect(()=>{
-        const checkAuth=async()=>{
-            try {
-                const res = await fetch("http://192.168.0.131:5000/auth/verify",{
-                    headers:{
-                        "Content-Type":"application/json",
-                        "Authorization":`Bearer ${localStorage.getItem("token")}`
-                    }
-                });
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const token =
+          localStorage.getItem("token") || sessionStorage.getItem("token");
 
-                if(res.ok) setIsAuth(true);
-                else setIsAuth(false)
-            } catch (error) {
-                setIsAuth(false)
-            }
-        };
-        checkAuth()
-    },[]);
+        if (!token) {
+          setIsAuth(false);
+          return;
+        }
 
-  if(isAuth===null)return <p>Loading...</p>
+        const res = await fetch(`${API_URL}/auth/verify`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
 
-  return isAuth ? <>{children}</>:<Navigate to='/login' replace/>;
-}
+        setIsAuth(res.ok);
+      } catch (error) {
+        setIsAuth(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  if (isAuth === null) return <p>Loading...</p>;
+
+  return isAuth ? <>{children}</> : <Navigate to="/login" replace />;
+};
 
 export default ProtectedRoute;

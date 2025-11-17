@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
+import { API_URL } from "../constants/api";
 
 interface ServerToClientEvents {
   message: (data: any) => void;
@@ -30,7 +31,7 @@ export const useSocket = () => {
   useEffect(() => {
     if (!userId) return;
 
-    socketRef.current = io("http://192.168.0.131:5000");
+    socketRef.current = io(`${API_URL}`);
 
     socketRef.current.on("connect", () => {
       console.log("Socket connected", socketRef.current?.id);
@@ -49,7 +50,7 @@ export const useSocket = () => {
 };
 
 export const getUser = async () => {
-  const res = await fetch("http://192.168.0.131:5000/users/getUser", {
+  const res = await fetch(`${API_URL}/users/getUser`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",

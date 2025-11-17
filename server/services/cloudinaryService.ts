@@ -23,6 +23,7 @@ export const uploadFileToCloudinary = async (
 
     return result;
   } catch (error: any) {
+    console.log(error);
     return { success: false, message: error.message || "Upload failed" };
   }
 };

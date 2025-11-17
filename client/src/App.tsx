@@ -10,6 +10,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Chat from "./pages/Chat";
 import ProtectedRoute from "./components/ProtectedRoute";
+import VerifyAccountPage from "./pages/VerifyAccountPage";
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path={`/verify_account/:email`} element={<VerifyAccountPage/>}/>
 
         <Route
           path="/chat"
