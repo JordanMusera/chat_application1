@@ -1,11 +1,13 @@
-import mysql from "mysql2/promise"
+import mysql from "mysql2/promise";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const db = mysql.createPool({
-    host:"localhost",
-    user:"root",
-    password:"",
-    database:"chat_app"
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DATABASE,
 });
-
 
 export default db;
