@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { API_URL } from '../constants/api';
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+const GuestRoute = ({ children }: { children: React.ReactNode }) => {
   const [isAuth, setIsAuth] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -33,7 +33,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (isAuth === null) return <p>Loading...</p>;
 
-  return isAuth ? <>{children}</> : <Navigate to="/login" replace />;
+  return isAuth ? <Navigate to="/chat" replace /> : <>{children}</>;
 };
 
-export default ProtectedRoute;
+export default GuestRoute;

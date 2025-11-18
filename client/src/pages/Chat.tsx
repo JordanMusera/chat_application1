@@ -4,9 +4,7 @@ import { useSocket } from "../hooks/useSocket";
 import { v4 as uuidv4 } from "uuid";
 import {
   CloseOutlined,
-  EllipsisOutlined,
   MessageOutlined,
-  MoreOutlined,
   PaperClipOutlined,
 } from "@ant-design/icons";
 import {
@@ -17,8 +15,6 @@ import {
   FileZipOutlined,
   FileOutlined,
 } from "@ant-design/icons";
-import { Dropdown, Menu, notification } from "antd";
-import { message as antdMessage } from "antd";
 import { toast } from "react-toastify";
 import { API_URL } from "../constants/api";
 import MyDropdown from "../components/MyDropdown";
@@ -77,10 +73,36 @@ const Chat = () => {
     url: string;
   } | null>(null);
 
-  const menu_items = [
-    { key: "1", label: "Create group" },
-    { key: "2", label: "Profile" },
-  ];
+
+   const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const scrollToBottom = () => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    const updateHeight = () => {
+      if (window.visualViewport) {
+        setViewportHeight(window.visualViewport.height);
+      } else {
+        setViewportHeight(window.innerHeight);
+      }
+      scrollToBottom();
+    };
+
+    updateHeight();
+
+    window.visualViewport?.addEventListener("resize", updateHeight);
+    window.addEventListener("resize", updateHeight);
+
+    return () => {
+      window.visualViewport?.removeEventListener("resize", updateHeight);
+      window.removeEventListener("resize", updateHeight);
+    };
+  }, [selectedChat, input]);
+
+
 
   useEffect(() => {
     getUser();
@@ -337,7 +359,7 @@ const Chat = () => {
     );
   };
 
-  return (
+    return (
     <div className="flex flex-col md:flex-row h-[100dvh] bg-gray-100 relative">
       <div
         className={`fixed md:static top-0 left-0 h-[100dvh] w-full md:w-1/4 bg-gray-800 p-3 flex flex-col z-30 transform transition-transform duration-300 ease-in-out 
@@ -355,32 +377,33 @@ const Chat = () => {
         </div>
 
         <hr className="my-3 border-gray-600" />
-        <div className="flex-1 overflow-y-auto space-y-1">
-          {(searchWord.length === 0 ? users : searchContent).map((user) => (
-            <div
-              key={user.id}
-              onClick={() => {
-                setMenuOpen(false);
-                searchWord.length === 0
-                  ? selectChat(user.chat_id, user.id)
-                  : selectUser(user);
-              }}
-              className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-gray-700 transition"
-            >
-              <img
-                src={user.avatar}
-                alt={user.name}
-                className="w-12 h-12 rounded-full object-cover"
-              />
-              <div className="overflow-hidden">
-                <p className="text-white font-semibold truncate">{user.name}</p>
-                <p className="text-sm text-gray-400 truncate">
-                  {user.lastMessage}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
+        <div className="flex flex-col gap-2">
+  {(searchWord.length === 0 ? users : searchContent).map((user) => (
+    <div
+      key={user.id}
+      onClick={() => {
+        setMenuOpen(false);
+        searchWord.length === 0
+          ? selectChat(user.chat_id, user.id)
+          : selectUser(user);
+      }}
+      className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-gray-700 transition w-full"
+    >
+      <img
+        src={user.avatar || "/profile-icon.svg"}
+        alt={user.name}
+        className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+      />
+      <div className="overflow-hidden flex flex-col justify-center text-md gap-2">
+        <span className="text-white font-semibold truncate">{user.name}</span>
+        <span className="text-sm text-gray-400 truncate">
+          {user.lastMessage}
+        </span>
+      </div>
+    </div>
+  ))}
+</div>
+
       </div>
 
       {(menuOpen || !selectedChat) && selectedChat && (
@@ -390,11 +413,14 @@ const Chat = () => {
         />
       )}
 
-      <div className="flex flex-col flex-1 bg-gray-200 h-full relative">
+      <div
+        className="flex flex-col flex-1 bg-gray-200 relative"
+        style={{ height: viewportHeight }}
+      >
         {selectedChat ? (
           <>
             <div className="flex items-center justify-between p-3 bg-gray-800 text-white shadow-md flex-shrink-0 sticky top-0 z-10">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-5">
                 <button
                   onClick={() => setMenuOpen(true)}
                   className="md:hidden text-2xl font-bold focus:outline-none"
@@ -402,13 +428,13 @@ const Chat = () => {
                   ☰
                 </button>
                 <img
-                  src={selectedChat.avatar}
+                  src={selectedChat.avatar || "/profile-icon.svg"}
                   alt={selectedChat.name}
-                  className="h-10 w-10 rounded-full object-cover"
+                  className="h-12 w-12 rounded-full object-cover"
                 />
-                <div>
-                  <p className="font-bold text-md">{selectedChat.name}</p>
-                  <p className="text-sm text-gray-300">online</p>
+                <div className="gap-0 flex flex-col">
+                  <span className="font-bold text-lg">{selectedChat.name}</span>
+                  <span className="text-sm text-gray-300">online</span>
                 </div>
               </div>
             </div>
@@ -517,6 +543,7 @@ const Chat = () => {
                   </div>
                 );
               })}
+              <div ref={messagesEndRef} />
             </div>
 
             {previewFile && (
@@ -546,7 +573,7 @@ const Chat = () => {
               </div>
             )}
 
-            <div className="flex items-center gap-3 p-3 bg-gray-800 flex-shrink-0 sticky bottom-0 z-10 pb-[env(safe-area-inset-bottom)]">
+            <div className="flex items-center justify-center gap-3 h-max p-3 bg-gray-800 flex-shrink-0 sticky bottom-0 z-10 pb-[env(safe-area-inset-bottom)]">
               <PaperClipOutlined
                 className="text-2xl text-white"
                 onClick={handleAttachClick}
@@ -564,7 +591,9 @@ const Chat = () => {
                 className="flex-1 h-11 rounded-full px-4 text-white placeholder-gray-300 bg-gray-700 focus:outline-none"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onFocus={() => window.scrollTo(0, document.body.scrollHeight)}
+                onFocus={() =>
+                  messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+                }
                 onKeyDown={(e) => e.key === "Enter" && handleSendBE()}
               />
               <img
