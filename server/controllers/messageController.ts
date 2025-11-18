@@ -1,15 +1,20 @@
 import { Request, Response } from "express";
-import db from "../config/db";
+import { sql, pool, poolConnect } from "../config/db";
 import crypto from "crypto";
 import { getIO } from "../socket";
 import { uploadFileToCloudinary } from "../services/cloudinaryService";
+import { Int, NVarChar } from "mssql";
 
 export const getMessagesByChatId = async (req: Request, res: Response) => {
   const { chat_id } = req.body;
 
   try {
-    const [messages]: any = await db.query(
-      `
+    await poolConnect;
+
+    const selectRequest = new sql.Request(pool);
+    selectRequest.input("ChatId", Int, chat_id);
+
+    const query = `
       SELECT 
         m.id,
         m.chat_id,
@@ -19,44 +24,55 @@ export const getMessagesByChatId = async (req: Request, res: Response) => {
         m.timestamp
       FROM messages m
       JOIN users u ON m.sender_id = u.id
-      WHERE m.chat_id = ?
+      WHERE m.chat_id = @ChatId
       ORDER BY m.timestamp ASC
-      `,
-      [chat_id]
-    );
+    `;
+
+    const selectResponse = await selectRequest.query(query);
+    const messages = selectResponse.recordset;
 
     if (messages.length === 0) {
       return res.status(200).json({ success: true, messages: [] });
     }
 
     const messageIds = messages.map((m: any) => m.id);
-    const [files]: any = await db.query(
-      `SELECT * FROM message_files WHERE message_id IN (?)`,
-      [messageIds]
-    );
+    const idList = messageIds.join(",");
+
+    const selectFileResponse = await new sql.Request(pool).query(`
+      SELECT *
+      FROM message_files 
+      WHERE message_id IN (${idList})
+    `);
+
+    const files = selectFileResponse.recordset;
 
     const messagesWithFiles = messages.map((msg: any) => {
       const msgFiles = files.filter((f: any) => f.message_id === msg.id);
       return {
         ...msg,
-        file: msgFiles?.[0],
+        file: msgFiles?.[0] || null,
       };
     });
 
     return res.status(200).json({ success: true, messages: messagesWithFiles });
   } catch (error) {
     console.error(error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Error fetching messages" });
+    return res.status(500).json({
+      success: false,
+      message: "Error fetching messages",
+    });
   }
 };
 
-
 export const postMessage = async (req: Request, res: Response) => {
   const io = getIO();
-  const { chat_id, sender_id, receiver_id, content, newConvId, file_type } = req.body;
+  const { chat_id, sender_id, receiver_id, content, newConvId, file_type } =
+    req.body;
   const file = req.file;
+
+  await poolConnect;
+
+  console.log("Chat id: ",chat_id)
 
   if (!receiver_id || !sender_id || !content || !content.trim()) {
     return res.status(400).json({ success: false, message: "Invalid data" });
@@ -67,45 +83,77 @@ export const postMessage = async (req: Request, res: Response) => {
 
     if (activeChatId === 0) {
       const randomChatName = `chat_${crypto.randomBytes(6).toString("hex")}`;
-      const [chatRows]: any = await db.query(
-        "INSERT INTO chats (chat_name, isGroup) VALUES (?, ?)",
-        [randomChatName, 0]
-      );
-      activeChatId = chatRows.insertId;
 
-      await db.query(
-        "INSERT INTO chatmembers (chat_id, user_id) VALUES (?, ?), (?, ?)",
-        [activeChatId, Number(sender_id), activeChatId, Number(receiver_id)]
+      const insertChatRequest = new sql.Request(pool);
+      insertChatRequest.input("ChatName", NVarChar, randomChatName);
+      const insertChatResponse = await insertChatRequest.query(
+        "INSERT INTO chats (chat_name,isGroup) OUTPUT INSERTED.id VALUES (@ChatName,0)"
       );
 
-      io.to(`user_${sender_id}`).emit("chat_created", { chat_id: activeChatId });
+      activeChatId = insertChatResponse.recordset[0].id;
+
+      const insertChatMembersRequest = new sql.Request(pool);
+      insertChatMembersRequest.input("ActiveChatId", Int, activeChatId);
+      insertChatMembersRequest.input("SenderId", Int, sender_id);
+      insertChatMembersRequest.input("ReceiverId", Int, receiver_id);
+
+      await insertChatMembersRequest.query(
+        "INSERT INTO chatmembers (chat_id,user_id) VALUES (@ActiveChatId,@SenderId),(@ActiveChatId,@ReceiverId)"
+      );
+
+      io.to(`user_${sender_id}`).emit("chat_created", {
+        chat_id: activeChatId,
+      });
     }
 
     let uploadedFile: { url: string; public_id: string } | null = null;
     if (file) {
-      const result = await uploadFileToCloudinary(file.buffer, file.originalname);
+      const result = await uploadFileToCloudinary(
+        file.buffer,
+        file.originalname
+      );
       if (!("success" in result && result.success === false)) {
         uploadedFile = result as unknown as { url: string; public_id: string };
       }
     }
 
-    const [msgResult] = await db.query<any>(
-      "INSERT INTO messages (chat_id, sender_id, content, timestamp) VALUES (?, ?, ?, NOW())",
-      [activeChatId, Number(sender_id), content.trim()]
+    const insertIntoMessageRequest = new sql.Request(pool);
+    insertIntoMessageRequest.input("ChatId", Int, activeChatId);
+    insertIntoMessageRequest.input("SenderId", Int, sender_id);
+    insertIntoMessageRequest.input("Content", NVarChar, content.trim());
+
+    const insertMessageResponse = await insertIntoMessageRequest.query(
+      "INSERT INTO messages (chat_id,sender_id,content,timestamp) OUTPUT INSERTED.id VALUES (@ChatId,@SenderId,@Content,GETDATE())"
     );
 
-    const [row] = await db.query<any>("SELECT name FROM users WHERE id=?", [Number(sender_id)]);
-    const sender_name = row[0].name;
+    const selectNameRequest = new sql.Request(pool);
+    selectNameRequest.input("SenderId", Int, sender_id);
+
+    const selectNameResponse = await selectNameRequest.query(
+      "SELECT name FROM users WHERE id=@SenderId"
+    );
+
+    const sender_name = selectNameResponse.recordset[0].name;
 
     if (file) {
-      await db.query<any>(
-        "INSERT INTO message_files (message_id,name,url,type,public_id) VALUES (?,?,?,?,?)",
-        [msgResult.insertId, file.originalname, uploadedFile?.url, file_type, uploadedFile?.public_id]
+      const insertMessageRequest = new sql.Request(pool);
+      insertMessageRequest.input(
+        "MessageId",
+        Int,
+        insertMessageResponse.recordset[0].id
+      );
+      insertMessageRequest.input("Name", NVarChar, file.originalname);
+      insertMessageRequest.input("Url", NVarChar, uploadedFile?.url);
+      insertMessageRequest.input("Type", NVarChar, file_type);
+      insertMessageRequest.input("PublicId", NVarChar, uploadedFile?.public_id);
+
+      await insertMessageRequest.query(
+        "INSERT INTO message_files (message_id,name,url,type,public_id) VALUES (@MessageId,@Name,@Url,@Type,@PublicId)"
       );
     }
 
     const messageData = {
-      id: msgResult.insertId,
+      id: insertMessageResponse.recordset[0].id,
       chat_id: activeChatId,
       sender_name,
       sender_id: Number(sender_id),
@@ -124,6 +172,7 @@ export const postMessage = async (req: Request, res: Response) => {
       timestamp: new Date().toISOString(),
     };
 
+    console.log(messageData)
     io.to(activeChatId.toString()).emit("receive_message", messageData);
     io.to(`user_${receiver_id}`).emit("newMessage", messageData);
 
@@ -133,4 +182,3 @@ export const postMessage = async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
-

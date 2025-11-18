@@ -1,14 +1,15 @@
 import { Request, Response } from "express";
-import db from "../config/db";
+import { sql, pool, poolConnect } from "../config/db";
 import bcrypt from "bcrypt";
 import {
   create_jwt,
   generateOTP,
-  sendOTPToEmail,
 } from "../functions/authFunctions";
+import { sendOTPToEmail } from "../services/mailtrapService";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { uploadFileToCloudinary } from "../services/cloudinaryService";
+import { Int, NVarChar } from "mssql";
 
 dotenv.config();
 
@@ -23,6 +24,8 @@ export const registerUser = async (req: Request, res: Response) => {
         .json({ success: false, message: "All fields are required" });
     }
 
+    await poolConnect;
+
     let uploadedFile: { url: string; public_id: string } | null = null;
     if (image) {
       const result = await uploadFileToCloudinary(
@@ -34,11 +37,13 @@ export const registerUser = async (req: Request, res: Response) => {
       }
     }
 
-    const [existingUsers] = await db.query(
-      "SELECT * FROM users WHERE email = ?",
-      [email]
+    const checkRequest = new sql.Request(pool);
+    checkRequest.input("Email", sql.NVarChar, email);
+    const existingUsersResult = await checkRequest.query(
+      "SELECT * FROM users WHERE email = @Email"
     );
-    if ((existingUsers as any).length > 0) {
+
+    if (existingUsersResult.recordset.length > 0) {
       return res
         .status(400)
         .json({ success: false, message: "Email already registered" });
@@ -46,29 +51,42 @@ export const registerUser = async (req: Request, res: Response) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const [insertResult] = await db.query<any>(
-      "INSERT INTO users (name, email, avatar, password) VALUES (?, ?, ?, ?)",
-      [name, email, uploadedFile?.url, hashedPassword]
+    const insertRequest = new sql.Request(pool);
+    insertRequest.input("Name", sql.NVarChar, name);
+    insertRequest.input("Email", sql.NVarChar, email);
+    insertRequest.input("Avatar", sql.NVarChar, uploadedFile?.url ?? null);
+    insertRequest.input("Password", sql.NVarChar, hashedPassword);
+
+    const insertResult = await insertRequest.query(
+      `INSERT INTO users (name, email, avatar, password)
+       OUTPUT INSERTED.id AS id
+       VALUES (@Name, @Email, @Avatar, @Password)`
     );
 
-    const userId = (insertResult as any).insertId;
+    const userId = insertResult.recordset[0]?.id;
     if (!userId) throw new Error("User creation failed");
 
     const otp_code = generateOTP();
-    const [existingRows] = await db.query<any[]>(
-      "SELECT * FROM otp_codes WHERE user_id = ?",
-      [userId]
+
+    const otpRequest = new sql.Request(pool);
+    otpRequest.input("UserId", sql.Int, userId);
+    const existingOtpResult = await otpRequest.query(
+      "SELECT * FROM otp_codes WHERE user_id = @UserId"
     );
 
-    if (existingRows.length > 0) {
-      await db.query(
-        "UPDATE otp_codes SET otp_code = ?, verified = false WHERE user_id = ?",
-        [otp_code, userId]
+    if (existingOtpResult.recordset.length > 0) {
+      const updateOtpRequest = new sql.Request(pool);
+      updateOtpRequest.input("Otp", sql.NVarChar, otp_code);
+      updateOtpRequest.input("UserId", sql.Int, userId);
+      await updateOtpRequest.query(
+        "UPDATE otp_codes SET otp_code = @Otp, verified = 0 WHERE user_id = @UserId"
       );
     } else {
-      await db.query(
-        "INSERT INTO otp_codes (user_id, otp_code, verified) VALUES (?, ?, false)",
-        [userId, otp_code]
+      const insertOtpRequest = new sql.Request(pool);
+      insertOtpRequest.input("UserId", sql.Int, userId);
+      insertOtpRequest.input("Otp", sql.NVarChar, otp_code);
+      await insertOtpRequest.query(
+        "INSERT INTO otp_codes (user_id, otp_code, verified) VALUES (@UserId, @Otp, 0)"
       );
     }
 
@@ -79,6 +97,7 @@ export const registerUser = async (req: Request, res: Response) => {
       message: "User registered successfully. Check your email for OTP.",
     });
   } catch (error: any) {
+    console.error(error);
     res
       .status(500)
       .json({ success: false, message: error.message || "Server error" });
@@ -94,15 +113,21 @@ export const signInUser = async (req: Request, res: Response) => {
         .status(400)
         .json({ success: false, message: "Provide all fields" });
 
-    const [rows] = await db.query("SELECT * FROM users WHERE email=?", [email]);
+    await poolConnect;
 
-    if ((rows as any).length === 0) {
+    const checkRequest = new sql.Request(pool);
+    checkRequest.input("Email", NVarChar, email);
+    const checkResult = await checkRequest.query(
+      "SELECT * FROM users WHERE email= @Email"
+    );
+
+    if (checkResult.recordset.length === 0) {
       return res
         .status(400)
         .json({ success: false, message: "User not found" });
     }
 
-    const user = (rows as any)[0];
+    const user = checkResult.recordset[0];
     const validPassword = await bcrypt.compare(password, user.password);
 
     if (validPassword) {
@@ -135,24 +160,28 @@ export const verifyUser = (req: Request, res: Response) => {
 
 export const verifyAccount = async (req: Request, res: Response) => {
   const { email, code } = req.body;
+
+  await poolConnect;
+
+  const checkRequest = new sql.Request(pool);
+  checkRequest.input("Email", NVarChar, email);
+
   try {
     const query = `
       SELECT u.id as user_id, u.email, o.otp_code, o.verified
       FROM users u
       JOIN otp_codes o ON u.id = o.user_id
-      WHERE u.email = ?
+      WHERE u.email = @Email
     `;
+    const checkResult = await checkRequest.query(query);
 
-    const values = [email];
-    const [row] = await db.query<any>(query, values);
-
-    if (row.length === 0) {
+    if (checkResult.recordset.length === 0) {
       return res
         .status(404)
         .json({ success: false, message: "No OTP found for this email" });
     }
 
-    const otp_record = row[0];
+    const otp_record = checkResult.recordset[0];
     if (otp_record.verified) {
       return res
         .status(400)
@@ -160,20 +189,22 @@ export const verifyAccount = async (req: Request, res: Response) => {
     }
 
     if (otp_record.otp_code !== code) {
-      console.log(otp_record.code);
-      console.log(code);
       return res.status(400).json({ message: "Invalid OTP code" });
     }
 
-    await db.query("UPDATE otp_codes SET verified = true WHERE user_id = ?", [
-      otp_record.user_id,
-    ]);
+    const insertRequest = new sql.Request(pool);
+    insertRequest.input("UserId", Int, otp_record.user_id);
+    await insertRequest.query(
+      "UPDATE otp_codes SET verified = 1 WHERE user_id = @UserId"
+    );
 
-    const [userRow] = await db.query<any>("SELECT * FROM users WHERE id=?", [
-      otp_record.user_id,
-    ]);
+    const getRequest = new sql.Request(pool);
+    getRequest.input("Id", Int, otp_record.user_id);
+    const getResult = await getRequest.query(
+      "SELECT * FROM users WHERE id = @Id"
+    );
 
-    const user = userRow[0];
+    const user = getResult.recordset[0];
     const token = await create_jwt(user);
 
     return res.json({ message: "Account verified successfully!", token });

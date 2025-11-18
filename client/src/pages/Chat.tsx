@@ -78,9 +78,9 @@ const Chat = () => {
   } | null>(null);
 
   const menu_items = [
-  { key: "1", label: "Create group" },
-  { key: "2", label: "Profile" },
-];
+    { key: "1", label: "Create group" },
+    { key: "2", label: "Profile" },
+  ];
 
   useEffect(() => {
     getUser();
@@ -141,33 +141,9 @@ const Chat = () => {
     const handleNewMessage = (data: Message) => {
       show_notification(data);
 
-      setUsers((prevUsers: User[]) => {
-        const existing = prevUsers.find((u) => u.chat_id === data.chat_id);
-        if (existing) {
-          const updated = {
-            ...existing,
-            lastMessage: data.content,
-            unread: chatId === data.chat_id ? 0 : (existing.unread || 0) + 1,
-          };
-          return [
-            updated,
-            ...prevUsers.filter((u) => u.chat_id !== data.chat_id),
-          ];
-        } else {
-          const newUser: User = {
-            chat_id: data.chat_id,
-            id: data.sender_id,
-            name: data.sender_name,
-            lastMessage: data.content,
-            avatar: "",
-            unread: chatId === data.chat_id ? 0 : 1,
-          };
-          return [newUser, ...prevUsers];
-        }
-      });
+      getUsersConv();
     };
 
-    getUsersConv();
     socket.on("receive_message", handleReceiveMessage);
     socket.on("newMessage", handleNewMessage);
 
@@ -179,16 +155,13 @@ const Chat = () => {
 
   const search = async () => {
     try {
-      const res = await fetch(
-        `${API_URL}/users/getSearchUsers`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ searchWord }),
-        }
-      );
+      const res = await fetch(`${API_URL}/users/getSearchUsers`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ searchWord }),
+      });
       if (res.ok) {
         const data = await res.json();
         setSearchContent(data.content);
@@ -264,8 +237,10 @@ const Chat = () => {
   const handleSendBE = async () => {
     if (!input.trim()) return;
 
+    const isNewChat = !users.find((u) => u.chat_id === selectedChat?.chat_id);
+
     const formData = new FormData();
-    formData.append("newConvId", newConvId || "");
+    formData.append("newConvId", isNewChat ? newConvId : "");
     formData.append("chat_id", (selectedChat?.chat_id || 0).toString());
     formData.append("sender_id", user.id.toString());
     formData.append("receiver_id", receiverId.toString());
@@ -277,24 +252,28 @@ const Chat = () => {
     }
 
     try {
-      const res = await fetch(
-        `${API_URL}/messages/postMessage`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const res = await fetch(`${API_URL}/messages/postMessage`, {
+        method: "POST",
+        body: formData,
+      });
 
       const data = await res.json();
-      console.log(data);
 
-      if (chatId === 0) {
-        setSelectedChat((prev) =>
-          prev ? { ...prev, messages: [...prev.messages, data.message] } : prev
-        );
-      }
+      const newChatId = data.message.chat_id;
+
+      const updatedChat: ChatI = {
+        ...selectedChat!,
+        chat_id: newChatId,
+        messages: [...(selectedChat?.messages || []), data.message],
+      };
+
+      setSelectedChat(updatedChat);
+      setChatId(newChatId);
 
       setInput("");
+      setPreviewFile(null);
+
+      getUsersConv();
     } catch (error) {
       console.error("Send message error:", error);
     }
@@ -358,8 +337,6 @@ const Chat = () => {
     );
   };
 
-  
-
   return (
     <div className="flex flex-col md:flex-row h-[100dvh] bg-gray-100 relative">
       <div
@@ -368,16 +345,15 @@ const Chat = () => {
         md:translate-x-0`}
       >
         <div className="flex gap-2">
-           <input
-          type="text"
-          placeholder="Search here"
-          className="w-full p-2 rounded-xl bg-gray-700 text-white placeholder-gray-400 focus:outline-none"
-          onChange={(e) => setSearchWord(e.target.value)}
-        />
-        <MyDropdown/>
-
+          <input
+            type="text"
+            placeholder="Search here"
+            className="w-full p-2 rounded-xl bg-gray-700 text-white placeholder-gray-400 focus:outline-none"
+            onChange={(e) => setSearchWord(e.target.value)}
+          />
+          <MyDropdown />
         </div>
-       
+
         <hr className="my-3 border-gray-600" />
         <div className="flex-1 overflow-y-auto space-y-1">
           {(searchWord.length === 0 ? users : searchContent).map((user) => (
