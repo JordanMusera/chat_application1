@@ -6,6 +6,7 @@ import {
   CloseOutlined,
   MessageOutlined,
   PaperClipOutlined,
+  SendOutlined,
 } from "@ant-design/icons";
 import {
   FileImageOutlined,
@@ -18,6 +19,8 @@ import {
 import { toast } from "react-toastify";
 import { API_URL } from "../constants/api";
 import MyDropdown from "../components/MyDropdown";
+import { Navigate } from "react-router-dom";
+import { Spin } from "antd";
 
 interface IFile {
   name: string;
@@ -64,6 +67,8 @@ const Chat = () => {
   const [searchContent, setSearchContent] = useState<User[]>([]);
   const [newConvId, setNewConvId] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("chats");
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [previewFile, setPreviewFile] = useState<{
@@ -73,8 +78,7 @@ const Chat = () => {
     url: string;
   } | null>(null);
 
-
-   const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
+  const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -101,8 +105,6 @@ const Chat = () => {
       window.removeEventListener("resize", updateHeight);
     };
   }, [selectedChat, input]);
-
-
 
   useEffect(() => {
     getUser();
@@ -273,6 +275,8 @@ const Chat = () => {
       formData.append("file_type", previewFile.type);
     }
 
+    setSendingMessage(true);
+
     try {
       const res = await fetch(`${API_URL}/messages/postMessage`, {
         method: "POST",
@@ -280,6 +284,7 @@ const Chat = () => {
       });
 
       const data = await res.json();
+      setSendingMessage(false);
 
       const newChatId = data.message.chat_id;
 
@@ -297,7 +302,9 @@ const Chat = () => {
 
       getUsersConv();
     } catch (error) {
+      setSendingMessage(false);
       console.error("Send message error:", error);
+      toast.error("Some server error occurred");
     }
   };
 
@@ -359,51 +366,95 @@ const Chat = () => {
     );
   };
 
-    return (
-    <div className="flex flex-col md:flex-row h-[100dvh] bg-gray-100 relative">
+  return (
+    <div className="flex flex-col md:flex-row h-[100dvh] bg-gray-800 relative">
       <div
         className={`fixed md:static top-0 left-0 h-[100dvh] w-full md:w-1/4 bg-gray-800 p-3 flex flex-col z-30 transform transition-transform duration-300 ease-in-out 
         ${menuOpen || !selectedChat ? "translate-x-0" : "-translate-x-full"} 
         md:translate-x-0`}
       >
+        <h1 className="text-3xl font-bold text-white text-center mb-3 font-serif">
+          Etu Chat
+        </h1>
         <div className="flex gap-2">
           <input
             type="text"
             placeholder="Search here"
-            className="w-full p-2 rounded-xl bg-gray-700 text-white placeholder-gray-400 focus:outline-none"
+            className="w-full p-3 rounded-2xl bg-gray-700 focus:ring-2 focus:ring-blue-500 outline-none"
             onChange={(e) => setSearchWord(e.target.value)}
           />
           <MyDropdown />
         </div>
 
         <hr className="my-3 border-gray-600" />
-        <div className="flex flex-col gap-2">
-  {(searchWord.length === 0 ? users : searchContent).map((user) => (
-    <div
-      key={user.id}
-      onClick={() => {
-        setMenuOpen(false);
-        searchWord.length === 0
-          ? selectChat(user.chat_id, user.id)
-          : selectUser(user);
-      }}
-      className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-gray-700 transition w-full"
-    >
-      <img
-        src={user.avatar || "/profile-icon.svg"}
-        alt={user.name}
-        className="w-12 h-12 rounded-full object-cover flex-shrink-0"
-      />
-      <div className="overflow-hidden flex flex-col justify-center text-md gap-2">
-        <span className="text-white font-semibold truncate">{user.name}</span>
-        <span className="text-sm text-gray-400 truncate">
-          {user.lastMessage}
-        </span>
-      </div>
-    </div>
-  ))}
-</div>
 
+        <div className="flex mb-3 rounded-md">
+          <button
+            onClick={() => setActiveTab("chats")}
+            className={`flex-1 py-3 text-center font-semibold transition 
+      ${
+        activeTab === "chats"
+          ? "bg-blue-600 text-white"
+          : "bg-gray-700 text-gray-300"
+      }`}
+          >
+            Chats
+          </button>
+
+          <button
+            onClick={() => setActiveTab("groups")}
+            className={`flex-1 py-3 text-center font-semibold  transition 
+      ${
+        activeTab === "groups"
+          ? "bg-blue-600 text-white"
+          : "bg-gray-700 text-gray-300"
+      }`}
+          >
+            Groups
+          </button>
+        </div>
+
+        {activeTab === "chats" ? (
+          <div className="flex flex-col gap-2">
+            {(searchWord.length === 0 ? users : searchContent).map((user) => (
+              <div
+                key={user.id}
+                onClick={() => {
+                  setMenuOpen(false);
+                  searchWord.length === 0
+                    ? selectChat(user.chat_id, user.id)
+                    : selectUser(user);
+                }}
+                className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-gray-700 transition w-full"
+              >
+                <img
+                  src={user.avatar || "/profile-icon.svg"}
+                  alt={user.name}
+                  className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+                />
+                <div className="overflow-hidden flex flex-col justify-center text-md gap-2">
+                  <span className="text-white font-semibold truncate">
+                    {user.name}
+                  </span>
+                  <span className="text-sm text-gray-400 truncate">
+                    {user.lastMessage}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-white font-bold flex flex-col items-center justify-center h-full text-xl">
+            <span>You are not a member of any group</span>
+            <div className="flex flex-col items-center justify-center gap-3">
+              <span>Join</span>
+              <span className="text-xl font-extrabold">OR</span>
+              <button className="text-blue-500 hover:cursor-pointer hover:underline">
+                Create Group
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {(menuOpen || !selectedChat) && selectedChat && (
@@ -414,7 +465,7 @@ const Chat = () => {
       )}
 
       <div
-        className="flex flex-col flex-1 bg-gray-200 relative"
+        className="flex flex-col flex-1 bg-gray-800 relative"
         style={{ height: viewportHeight }}
       >
         {selectedChat ? (
@@ -440,7 +491,7 @@ const Chat = () => {
             </div>
 
             <div
-              className="flex-1 overflow-y-auto px-4 py-3 space-y-2 bg-gray-100"
+              className="flex-1 overflow-y-auto px-4 py-3 space-y-2 bg-gray-700 rounded-tl-3xl rounded-br-3xl"
               style={{
                 paddingBottom: "calc(5rem + env(safe-area-inset-bottom))",
               }}
@@ -596,12 +647,15 @@ const Chat = () => {
                 }
                 onKeyDown={(e) => e.key === "Enter" && handleSendBE()}
               />
-              <img
-                src="/sendIcon.png"
-                alt="send"
-                className="w-10 h-10 rounded-full cursor-pointer hover:scale-110 transition-transform"
-                onClick={handleSendBE}
-              />
+
+              {sendingMessage ? (
+                <Spin size="large" />
+              ) : (
+                <SendOutlined
+                  className="text-2xl text-white rounded-full cursor-pointer hover:scale-110 transition-transform"
+                  onClick={handleSendBE}
+                />
+              )}
             </div>
           </>
         ) : (

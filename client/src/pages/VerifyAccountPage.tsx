@@ -8,7 +8,7 @@ const VerifyAccountPage = () => {
   const [loading, setLoading] = useState(false);
   const [code, setCode] = useState("");
   const [message, setMessage] = useState("");
-  const {email} = useParams<{email:string}>();
+  const { email } = useParams<{ email: string }>();
   const decodedEmail = email ? decodeURIComponent(email) : "";
 
   const navigate = useNavigate();
@@ -21,7 +21,7 @@ const VerifyAccountPage = () => {
       const res = await fetch(`${API_URL}/auth/verifyAccount`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email:decodedEmail,code })
+        body: JSON.stringify({ email: decodedEmail, code }),
       });
 
       const data = await res.json();
@@ -43,56 +43,59 @@ const VerifyAccountPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 p-6">
-      <div className="bg-gray-800 p-8 rounded-2xl shadow-xl w-full max-w-md text-white">
-        <h1 className="text-2xl font-bold mb-4 text-center">Verify Your Account</h1>
-        <p className="text-gray-300 text-center mb-6">
-          {`Enter the code sent to your email address: ${decodedEmail}`}
+    <div className="min-h-screen min-w-screen bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
+      <form className="h-max w-full md:w-1/2 xl:w-1/3 flex flex-col gap-4 items-center justify-center border border-gray-400 rounded-md p-5 m-10">
+        <h1 className="text-3xl font-bold text-white text-center mb-3">Verify Account</h1>
+        <p className="text-center text-white mb-6">
+          Enter the OTP sent to  
+          <span className="font-semibold text-blue-400"> {decodedEmail}</span>
         </p>
 
         {!emailSent && (
-          <>
-            <label className="block text-sm mb-1">OTP Code</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="Enter OPT code"
-              className="w-full p-3 rounded-lg bg-gray-700 outline-none focus:ring-2 focus:ring-blue-500 mb-4"
-            />
+          <div className="space-y-4 w-full px-10">
+            <div className="text-white">
+              <label className="block text-sm mb-1 font-medium">OTP Code</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="Enter OTP code"
+                className="w-full p-3 rounded-2xl bg-gray-700 focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
 
             <button
-              onClick={handleSendVerification}
-              className="w-full py-2 bg-blue-600 hover:bg-blue-700 rounded-xl text-lg font-semibold transition disabled:bg-blue-400"
               disabled={loading}
+              onClick={handleSendVerification}
+              className={`w-full py-1 rounded-2xl font-semibold text-lg transition text-white
+                ${loading ? "bg-blue-300 cursor-not-allowed" : "bg-blue-400 hover:bg-blue-500"}
+              `}
             >
-              {loading ? "Sending..." : "Verify Account"}
+              {loading ? "Verifying..." : "Verify Account"}
             </button>
-          </>
+
+            {message && (
+              <p className="text-center text-red-400 text-sm">{message}</p>
+            )}
+          </div>
         )}
 
         {emailSent && (
-          <div className="text-center">
-            <p className="text-green-400 mb-4">{message}</p>
+          <div className="text-center space-y-4">
+            <p className="text-green-400 font-medium">{message}</p>
+
             <button
               onClick={() => setEmailSent(false)}
-              className="py-2 px-6 bg-gray-700 hover:bg-gray-600 rounded-lg mt-4"
+              className="py-2 px-6 bg-gray-700 hover:bg-gray-600 rounded-xl text-white font-medium"
             >
               Send Again
             </button>
           </div>
         )}
-
-        {message && !emailSent && (
-          <p className="text-red-400 text-center mt-4">{message}</p>
-        )}
-      </div>
+      </form>
     </div>
   );
-}
+};
 
-export default VerifyAccountPage
-
-
-  
+export default VerifyAccountPage;

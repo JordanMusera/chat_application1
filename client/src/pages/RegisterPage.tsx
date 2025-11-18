@@ -14,14 +14,16 @@ const RegisterPage = () => {
   const [profilePicURL, setProfilePicURL] = useState("./profile-icon.svg");
   const profilePicInputRef = useRef<HTMLInputElement | null>(null);
 
+  const [loading, setLoading] = useState<boolean>(false); // ⬅ NEW
+
   const directToVerifyAccount = () => {
     const encodedEmail = encodeURIComponent(email);
     navigate(`/verify_account/${encodedEmail}`);
   };
 
-  const directToLogin=()=>{
-    navigate("/login")
-  }
+  const directToLogin = () => {
+    navigate("/login");
+  };
 
   const validateInputs = () => {
     if (!username.trim()) {
@@ -42,10 +44,13 @@ const RegisterPage = () => {
 
   const registerUser = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
+
+    if (loading) return;
+
     const validInputs = validateInputs();
-    if (!validInputs) {
-      return;
-    }
+    if (!validInputs) return;
+
+    setLoading(true);
 
     try {
       const formData = new FormData();
@@ -62,14 +67,17 @@ const RegisterPage = () => {
       });
 
       const data = await req.json();
-      if (req.ok){
+      if (req.ok) {
         toast.success(data.message);
         directToVerifyAccount();
-      } 
-      else toast.error(data.message);
+      } else {
+        toast.error(data.message);
+      }
     } catch (error) {
       toast.error("Some server error occurred.");
       console.log(error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -85,9 +93,11 @@ const RegisterPage = () => {
 
     setProfilePicURL(URL.createObjectURL(file));
   };
+
   return (
     <div className="min-h-screen min-w-screen bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
       <form className="h-max w-full md:w-1/2 xl:w-1/3 flex flex-col gap-4 items-center justify-center border border-gray-400 rounded-md p-5 m-10">
+      <h1 className="text-3xl font-bold text-white text-center mb-3">Sign-up Account</h1>
         <div className="flex gap-3">
           <img
             src={profilePicURL}
@@ -113,29 +123,33 @@ const RegisterPage = () => {
         <input
           type="email"
           placeholder="Enter username"
-          className="w-full rounded-2xl p-2"
+          className="w-full p-3 rounded-2xl bg-gray-700 focus:ring-2 focus:ring-blue-500 outline-none"
           onChange={(e) => setUsername(e.target.value)}
         />
         <input
           type="email"
           placeholder="Enter email"
-          className="w-full rounded-2xl p-2"
+          className="w-full p-3 rounded-2xl bg-gray-700 focus:ring-2 focus:ring-blue-500 outline-none"
           onChange={(e) => setEmail(e.target.value)}
         />
         <input
           type="password"
           placeholder="Enter password"
-          className="w-full rounded-2xl p-2"
+          className="w-full p-3 rounded-2xl bg-gray-700 focus:ring-2 focus:ring-blue-500 outline-none"
           onChange={(e) => setPassword(e.target.value)}
         />
 
         <button
           type="submit"
-          className="text-white w-full rounded-2xl p-2 bg-blue-400"
+          disabled={loading}
+          className={`w-full py-1 rounded-2xl font-semibold text-lg transition text-white
+                ${loading ? "bg-blue-300 cursor-not-allowed" : "bg-blue-400 hover:bg-blue-500"}
+              `}
           onClick={(e) => registerUser(e)}
         >
-          Sign up
+          {loading ? "Signing up..." : "Sign up"}
         </button>
+
         <p className="text-white text-md">
           Have an account?{" "}
           <b onClick={directToLogin} className="hover:cursor-pointer">

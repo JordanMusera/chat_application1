@@ -13,6 +13,7 @@ const Login = () => {
   const [email, setEmail] = useState<string | "">("");
   const [password, setPassword] = useState<string | "">("");
   const [rememberme, setRememberme] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false); // ⬅ NEW
 
   const validateInputs = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -30,10 +31,13 @@ const Login = () => {
 
   const singInUser = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
+
+    if (loading) return;
+
     const validInputs = validateInputs();
-    if (!validInputs) {
-      return;
-    }
+    if (!validInputs) return;
+
+    setLoading(true);
 
     try {
       const req = await fetch(`${API_URL}/auth/signin`, {
@@ -49,30 +53,34 @@ const Login = () => {
       const data: any = await req.json();
       if (req.ok) {
         toast.success(data.message);
-        if(rememberme) localStorage.setItem("token", data.token);
+        if (rememberme) localStorage.setItem("token", data.token);
         else sessionStorage.setItem("token", data.token);
-        
+
         navigate("/chat");
       } else {
         toast.error(data.message);
       }
     } catch (error) {
       toast.error("Some server error occurred!");
+    } finally {
+      setLoading(false);
     }
   };
+
   return (
     <div className="min-h-screen min-w-screen bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
       <form className="h-max w-full md:w-1/2 xl:w-1/3 flex flex-col gap-4 items-center justify-center border border-gray-400 rounded-md p-5 m-10">
+      <h1 className="text-3xl font-bold text-white text-center mb-3">Login Account</h1>
         <input
           type="email"
           placeholder="Enter email"
-          className="w-full rounded-2xl p-2"
+          className="w-full p-3 rounded-2xl bg-gray-700 focus:ring-2 focus:ring-blue-500 outline-none"
           onChange={(e) => setEmail(e.target.value)}
         />
         <input
           type="password"
           placeholder="Enter password"
-          className="w-full rounded-2xl p-2"
+          className="w-full p-3 rounded-2xl bg-gray-700 focus:ring-2 focus:ring-blue-500 outline-none"
           onChange={(e) => setPassword(e.target.value)}
         />
         <div className="flex text-md text-white w-full items-center justify-between">
@@ -90,11 +98,15 @@ const Login = () => {
 
         <button
           type="submit"
-          className="text-white w-full rounded-2xl p-2 bg-blue-400"
+          disabled={loading}
+          className={`w-full py-1 rounded-2xl font-semibold text-lg transition text-white
+                ${loading ? "bg-blue-300 cursor-not-allowed" : "bg-blue-400 hover:bg-blue-500"}
+              `}
           onClick={(e) => singInUser(e)}
         >
-          login
+          {loading ? "Logging in..." : "Login"} {/* ⬅ Text changes */}
         </button>
+
         <p className="text-white text-md">
           Dont have an account?{" "}
           <b onClick={directToRegister} className="hover:cursor-pointer">
