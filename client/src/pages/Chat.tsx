@@ -380,7 +380,7 @@ const Chat = () => {
           <input
             type="text"
             placeholder="Search here"
-            className="w-full p-3 rounded-2xl bg-gray-700 focus:ring-2 focus:ring-blue-500 outline-none"
+            className="w-full p-3 rounded-2xl bg-gray-700 focus:ring-2 focus:ring-blue-500 outline-none text-white"
             onChange={(e) => setSearchWord(e.target.value)}
           />
           <MyDropdown />

@@ -61,7 +61,7 @@ const VerifyAccountPage = () => {
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 placeholder="Enter OTP code"
-                className="w-full p-3 rounded-2xl bg-gray-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full p-3 rounded-2xl bg-gray-700 focus:ring-2 focus:ring-blue-500 outline-none text-white"
               />
             </div>
 

@@ -69,7 +69,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen min-w-screen bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
-      <form className="h-max w-full md:w-1/2 xl:w-1/3 flex flex-col gap-4 items-center justify-center border border-gray-400 rounded-md p-5 m-10">
+      <form className="h-max text-white w-full md:w-1/2 xl:w-1/3 flex flex-col gap-4 items-center justify-center border border-gray-400 rounded-md p-5 m-10">
       <h1 className="text-3xl font-bold text-white text-center mb-3">Login Account</h1>
         <input
           type="email"
