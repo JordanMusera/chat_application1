@@ -1,8 +1,7 @@
 import { Server } from "socket.io";
-import db from "../config/db";
 
 
-const onlineUsers = new Map<number, string>();
+export const onlineUsers = new Map<number, string>();
 
 export const socketHandler = (io: Server) => {
   io.on("connection", (socket) => {
