@@ -1,1 +1,1 @@
-export const API_URL = "http://192.168.56.1:5000"
+export const API_URL = "https://chat-application1-jvvw.onrender.com"
