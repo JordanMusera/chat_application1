@@ -4,7 +4,6 @@ import crypto from "crypto";
 import { getIO } from "../socket";
 import { uploadFileToCloudinary } from "../services/cloudinaryService";
 import { Int, NVarChar } from "mssql";
-import { verifyToken } from "../functions/authFunctions";
 
 export const getMessagesByChatId = async (req: Request, res: Response) => {
   const { chat_id } = req.body;
@@ -67,13 +66,9 @@ export const getMessagesByChatId = async (req: Request, res: Response) => {
 
 export const postMessage = async (req: Request, res: Response) => {
   const io = getIO();
-  const { chat_id,receiver_id, content, newConvId, file_type } =
+  const { chat_id, sender_id, receiver_id, content, newConvId, file_type } =
     req.body;
   const file = req.file;
-
-  const token = req.headers.authorization?.split(" ")[1];
-    const user = await verifyToken(token);
-    const sender_id = user.id;
 
   await poolConnect;
 
