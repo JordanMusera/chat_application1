@@ -86,7 +86,7 @@ export const createGroup = async (req: Request, res: Response) => {
 
     for (const memberId of membersToInsert) {
       
-      io.to(`user_${memberId}`).emit("notification", {
+      io.to(`user_${memberId}`).emit("newMessage", {
         name: group_name,
         message: `Group has been created by ${userNameFetched}`,
       });
