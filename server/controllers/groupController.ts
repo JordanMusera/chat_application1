@@ -10,7 +10,6 @@ export const createGroup = async (req: Request, res: Response) => {
   let { group_members } = req.body;
   const avatar = req.file;
   try {
-
     if (!req.headers.authorization?.startsWith("Bearer ")) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
@@ -79,16 +78,13 @@ export const createGroup = async (req: Request, res: Response) => {
       .json({ success: true, message: "Group Created Successfully" });
   } catch (error) {
     console.error(error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Server error",
-        error: (error as Error).message,
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: (error as Error).message,
+    });
   }
 };
-
 
 export const fetchGroups = async (req: Request, res: Response) => {
   await poolConnect;
@@ -129,3 +125,50 @@ export const fetchGroups = async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+export const fetchConvMessages = async (req: Request, res: Response) => {
+  const { chat_id } = req.body;
+
+  try {
+    await poolConnect;
+
+    const request = new sql.Request(pool);
+    request.input("ChatId", sql.Int, chat_id);
+
+    const query = `
+      SELECT 
+        m.id AS message_id,
+        m.chat_id,
+        m.sender_id,
+        u.name AS sender_name,
+        u.avatar AS avatar,
+        m.content,
+        mf.name AS file_name,
+        mf.url AS file_url,
+        mf.type AS file_type,
+        mf.public_id AS file_public_id,
+        m.timestamp
+      FROM messages m
+      LEFT JOIN users u ON u.id = m.sender_id
+      LEFT JOIN message_files mf ON mf.message_id = m.id
+      WHERE m.chat_id = @ChatId
+      ORDER BY m.timestamp ASC;
+    `;
+
+    const result = await request.query(query);
+
+    return res.status(200).json({
+      success: true,
+      content: result.recordset
+    });
+
+  } catch (error: any) {
+    console.error("Fetch Conv Messages Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error fetching messages",
+      error: error.message
+    });
+  }
+};
+
