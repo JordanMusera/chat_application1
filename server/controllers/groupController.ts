@@ -76,22 +76,6 @@ export const createGroup = async (req: Request, res: Response) => {
         );
     }
 
-    const getUserNameRequest = new sql.Request(pool);
-    getUserNameRequest.input("UserId", Int, userId);
-    const getUserNameResponse = await getUserNameRequest.query(
-      "SELECT name FROM users WHERE id=@UserId"
-    );
-
-    const userNameFetched = getUserNameResponse.recordset[0].id;
-
-    for (const memberId of membersToInsert) {
-      
-      io.to(`user_${memberId}`).emit("newMessage", {
-        name: group_name,
-        message: `Group has been created by ${userNameFetched}`,
-      });
-    }
-
     return res
       .status(201)
       .json({ success: true, message: "Group Created Successfully" });
