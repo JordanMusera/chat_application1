@@ -5,8 +5,8 @@ import { API_URL } from "../constants/api";
 interface ServerToClientEvents {
   message: (data: any) => void;
   newMessage: (data: any) => void;
-  receive_message: (data:any)=>void;
-  notification: (data:any)=>void;
+  receive_message: (data: any) => void;
+  notification: (data: any) => void;
 }
 
 interface ClientToServerEvents {
@@ -32,14 +32,22 @@ export const useSocket = () => {
   useEffect(() => {
     if (!userId) return;
 
-    socketRef.current = io(`${API_URL}`);
+    // ⚡ Make sure to include these options
+    socketRef.current = io(`${API_URL}`, {
+      withCredentials: true,
+      transports: ["websocket"], // forces websocket, avoids handshake parsing errors
+    });
 
     socketRef.current.on("connect", () => {
-      console.log("Socket connected", socketRef.current?.id);
+      console.log("Socket connected with id:", socketRef.current?.id);
 
+      // Register user
       socketRef.current?.emit("register", userId);
-      console.log("Registered user room for userId:", userId);
     });
+
+    // Optional: log server messages
+    socketRef.current.on("message", (data) => console.log("Message:", data));
+    socketRef.current.on("receive_message", (data) => console.log("Received:", data));
 
     return () => {
       socketRef.current?.disconnect();
