@@ -182,6 +182,7 @@ const Chat = () => {
     return () => {
       socket.off("receive_message", handleReceiveMessage);
       socket.off("newMessage", handleNewMessage);
+      socket.off("notification",displayNotification1)
     };
   }, [socket, chatId, selectedChat, user.id]);
 
@@ -378,7 +379,6 @@ const Chat = () => {
     toast(
       <div
         className="flex gap-2 items-center"
-        onClick={() => selectChat(data.chat_id, data.sender_id)}
       >
         <BellFilled className="flex text-orange text-2xl" />
 

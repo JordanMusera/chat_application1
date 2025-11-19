@@ -11,6 +11,8 @@ export const createGroup = async (req: Request, res: Response) => {
   let { group_members } = req.body;
   const avatar = req.file;
   try {
+    const io = getIO();
+
     if (!req.headers.authorization?.startsWith("Bearer ")) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
@@ -83,7 +85,7 @@ export const createGroup = async (req: Request, res: Response) => {
     const userNameFetched = getUserNameResponse.recordset[0].id;
 
     for (const memberId of membersToInsert) {
-      const io = getIO();
+      
       io.to(`user_${memberId}`).emit("notification", {
         name: group_name,
         message: `Group has been created by ${userNameFetched}`,

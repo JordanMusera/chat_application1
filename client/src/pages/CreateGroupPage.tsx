@@ -69,7 +69,8 @@ const CreateGroupPage = () => {
   };
 
   const createGroup = async () => {
-    if(groupName.length<1 || groupDescription.length<1) return toast.info("Fill required fields")
+    if(groupName.length<1 || groupDescription.length<1) return toast.info("Fill required fields");
+    if(groupMembers.length===0) return toast.info("Add chat members");
     const formData = new FormData();
     formData.append("group_name", groupName);
     formData.append("group_description", groupDescription);
