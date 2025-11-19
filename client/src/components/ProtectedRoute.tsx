@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
-import { API_URL } from '../constants/api';
+import React, { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
+import { API_URL } from "../constants/api";
+import { Spin } from "antd";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const [isAuth, setIsAuth] = useState<boolean | null>(null);
@@ -18,8 +19,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
         const res = await fetch(`${API_URL}/auth/verify`, {
           headers: {
-            "Authorization": `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         });
 
         setIsAuth(res.ok);
@@ -31,7 +32,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     checkAuth();
   }, []);
 
-  if (isAuth === null) return <p>Loading...</p>;
+  if (isAuth === null)
+    return (
+      <div className="h-screen w-full flex justify-center items-center">
+        <Spin size="large" />
+      </div>
+    );
 
   return isAuth ? <>{children}</> : <Navigate to="/login" replace />;
 };

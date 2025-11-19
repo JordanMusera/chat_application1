@@ -14,7 +14,7 @@ const RegisterPage = () => {
   const [profilePicURL, setProfilePicURL] = useState("./profile-icon.svg");
   const profilePicInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [loading, setLoading] = useState<boolean>(false); // ⬅ NEW
+  const [loading, setLoading] = useState<boolean>(false);
 
   const directToVerifyAccount = () => {
     const encodedEmail = encodeURIComponent(email);

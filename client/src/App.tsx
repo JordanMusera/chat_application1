@@ -10,6 +10,7 @@ import GuestRoute from "./components/GuestRoute";
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import CreateGroupPage from "./pages/CreateGroupPage";
 
 function App() {
   return (
@@ -41,6 +42,12 @@ function App() {
             <Chat />
           </ProtectedRoute>
         } />
+
+        <Route path="/create_group" element={
+          <ProtectedRoute>
+            <CreateGroupPage/>
+          </ProtectedRoute>
+        }/>
       </Routes>
 
       <ToastContainer position="top-right" autoClose={3000} />

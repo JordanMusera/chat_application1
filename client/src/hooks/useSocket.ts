@@ -6,6 +6,7 @@ interface ServerToClientEvents {
   message: (data: any) => void;
   newMessage: (data: any) => void;
   receive_message: (data:any)=>void;
+  notification: (data:any)=>void;
 }
 
 interface ClientToServerEvents {

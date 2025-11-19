@@ -6,6 +6,7 @@ import http from "http";
 import authRoutes from "./routes/auth";
 import userRoutes from "./routes/userRoute";
 import messageRoutes from "./routes/messageRoute";
+import groupRoutes from "./routes/groupRoute"
 
 import { initSocket } from "./socket";
 import { socketHandler } from "./socket/socketHandler";
@@ -14,7 +15,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: ["https://etu-chat-client.onrender.com","http://localhost:3000", "http://192.168.1.131:3000"],
+    origin: ["https://etu-chat-client.onrender.com","http://localhost:3000", "http://192.168.1.131:3000","http://192.168.56.1:3000"],
     credentials: true,
   })
 );
@@ -24,6 +25,7 @@ app.use(cookieParser());
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/messages", messageRoutes);
+app.use("/group",groupRoutes);
 
 const server = http.createServer(app);
 

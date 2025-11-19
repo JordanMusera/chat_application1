@@ -78,24 +78,35 @@ export const getSearchUsers = async (req: Request, res: Response) => {
   try {
     const { searchWord } = req.body;
 
-    const selectRequest = new sql.Request(pool);
-    selectRequest.input("SearchWord", NVarChar, `%${searchWord}%`);
-    const selectResponse = await selectRequest.query(
-      "SELECT id,name,email,avatar FROM users WHERE name LIKE @SearchWord OR email LIKE @SearchWord"
-    );
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
 
-    if (selectResponse) {
-      res
-        .status(200)
-        .json({ success: true, content: selectResponse.recordset });
+    const user = verifyToken(token);
+    const userId = user.id;
+
+    const selectRequest = pool.request();
+    selectRequest.input("SearchWord", NVarChar, `%${searchWord}%`);
+    selectRequest.input("UserId", Int, userId);
+
+    const query = `
+      SELECT id, name, email, avatar 
+      FROM users 
+      WHERE (name LIKE @SearchWord OR email LIKE @SearchWord)
+        AND id <> @UserId
+    `;
+
+    const selectResponse = await selectRequest.query(query);
+
+    if (selectResponse.recordset.length > 0) {
+      res.status(200).json({ success: true, content: selectResponse.recordset });
     } else {
-      res
-        .status(404)
-        .json({ success: false, content: null, message: "Not found" });
+      res.status(404).json({ success: false, content: [], message: "No users found" });
     }
   } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Some server error occurred" });
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
