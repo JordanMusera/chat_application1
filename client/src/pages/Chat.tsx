@@ -34,6 +34,7 @@ interface Message {
   sender_id: number;
   sender_name: string;
   content: string;
+  avatar:string;
   file: IFile;
   timestamp: string;
 }
@@ -54,12 +55,23 @@ interface User {
   avatar: string;
   unread: number;
 }
+interface GroupI{
+  id:number;
+  chat_id:number;
+  name:string;
+  description:string;
+  avatar:string;
+  allow_members_to_add:boolean;
+  allow_members_to_post:boolean;
+}
 
 const Chat = () => {
   const socket = useSocket();
   const [user, setUser] = useState<any>({});
   const [users, setUsers] = useState<User[]>([]);
+  const [groups, setGroups] = useState<any>([]);
   const [selectedChat, setSelectedChat] = useState<ChatI | null>(null);
+  const [selectedGroup,setSelectedGroup] = useState<GroupI | null>(null)
   const [input, setInput] = useState("");
   const [chatId, setChatId] = useState(0);
   const [receiverId, setReceiverId] = useState(0);
@@ -118,6 +130,7 @@ const Chat = () => {
 
   useEffect(() => {
     if (user.id) getUsersConv();
+    getGroupsConv();
   }, [user]);
 
   useEffect(() => {
@@ -185,7 +198,7 @@ const Chat = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
         body: JSON.stringify({ searchWord }),
       });
@@ -218,29 +231,78 @@ const Chat = () => {
     if (res.ok) setUsers(data.users);
   };
 
+  const getGroupsConv = async () => {
+    const res = await fetch(`${API_URL}/groups/fetch_groups`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+    const data = await res.json();
+    if (res.ok) setGroups(data.groups);
+  };
+
   const selectChat = async (chatId: number, userId: number) => {
-    setChatId(chatId);
-    setReceiverId(userId);
+  setChatId(chatId);
+  setReceiverId(userId);
+
+  try {
     const res = await fetch(`${API_URL}/messages/getMessages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: chatId }),
     });
+
     const data = await res.json();
-    if (res.ok) {
-      const selectedUser = users.find((u) => u.chat_id === chatId);
-      setSelectedChat({
-        chat_id: chatId,
-        name: selectedUser?.name || "Unknown",
-        sender_id: selectedUser?.id || 0,
-        avatar: selectedUser?.avatar || "",
-        messages: (data.messages || []).sort(
-          (a: Message, b: Message) =>
-            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-        ),
-      });
-    }
-  };
+    if (!res.ok) return;
+
+    const selectedUser = users.find((u) => u.chat_id === chatId);
+
+    // Set selected chat with messages directly
+    setSelectedChat({
+      chat_id: chatId,
+      name: selectedUser?.name || "Unknown",
+      sender_id: selectedUser?.id || 0,
+      avatar: selectedUser?.avatar || "",
+      messages: data.messages || [], // SQL already ordered
+    });
+  } catch (err) {
+    console.error("Error fetching chat messages:", err);
+  }
+};
+
+
+  const selectGroup = async (group: any) => {
+  setChatId(group.chat_id);
+
+  console.log("Chat id:", group.chat_id);
+
+  const res = await fetch(`${API_URL}/groups/fetch_messages`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ chat_id: group.chat_id })
+  });
+
+  const data = await res.json();
+
+  if (res.ok) {
+    console.log(data);
+  }
+
+  setSelectedChat(prev => {
+    return {
+      avatar: group.avatar || "/group-profile-icon.jpg",
+      chat_id: group.chat_id,
+      name: group.name,
+      sender_id: 0,
+      messages: data.content ?? [] 
+    };
+  });
+};
+
 
   const selectUser = async (user: any) => {
     setReceiverId(user.id);
@@ -374,7 +436,7 @@ const Chat = () => {
       <div
         className={`fixed md:static top-0 left-0 h-[100dvh] w-full md:w-1/4 bg-gray-800 p-3 flex flex-col z-30 transform transition-transform duration-300 ease-in-out 
         ${menuOpen || !selectedChat ? "translate-x-0" : "-translate-x-full"} 
-        md:translate-x-0`}
+        md:translate-x-0 border-r-2 border-gray-400`}
       >
         <h1 className="text-3xl font-bold text-white text-center mb-3 font-serif">
           Etu Chat
@@ -417,47 +479,61 @@ const Chat = () => {
           </button>
         </div>
 
-        {activeTab === "chats" ? (
-          <div className="flex flex-col gap-2">
-            {(searchWord.length === 0 ? users : searchContent).map((user) => (
-              <div
-                key={user.id}
-                onClick={() => {
-                  setMenuOpen(false);
-                  searchWord.length === 0
-                    ? selectChat(user.chat_id, user.id)
-                    : selectUser(user);
-                }}
-                className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-gray-700 transition w-full"
-              >
-                <img
-                  src={user.avatar || "/profile-icon.svg"}
-                  alt={user.name}
-                  className="w-12 h-12 rounded-full object-cover flex-shrink-0"
-                />
-                <div className="overflow-hidden flex flex-col justify-center text-md gap-2">
-                  <span className="text-white font-semibold truncate">
-                    {user.name}
-                  </span>
-                  <span className="text-sm text-gray-400 truncate">
-                    {user.lastMessage}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-white font-bold flex flex-col items-center justify-center h-full text-xl">
-            <span>You are not a member of any group</span>
-            <div className="flex flex-col items-center justify-center gap-3">
-              <span>Join</span>
-              <span className="text-xl font-extrabold">OR</span>
-              <button className="text-blue-500 hover:cursor-pointer hover:underline" onClick={()=>navigate("/create_group")}>
-                Create Group
-              </button>
-            </div>
-          </div>
-        )}
+       {activeTab === "chats" ? (
+  <div className="flex flex-col gap-2 overflow-y-auto">
+    {(searchWord.length === 0 ? users : searchContent).map((user,index) => (
+      <div
+        key={index}
+        onClick={() => {
+          setMenuOpen(false);
+          searchWord.length === 0
+            ? selectChat(user.chat_id, user.id)
+            : selectUser(user);
+        }}
+        className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-gray-700 transition w-full"
+      >
+        <img
+          src={user.avatar || "/profile-icon.svg"}
+          alt={user.name}
+          className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+        />
+        <div className="overflow-hidden flex flex-col justify-center text-md gap-2">
+          <span className="text-white font-semibold truncate">
+            {user.name}
+          </span>
+          <span className="text-sm text-gray-400 truncate">
+            {user.lastMessage}
+          </span>
+        </div>
+      </div>
+    ))}
+  </div>
+) : (
+  <div className="text-white font-bold flex flex-col text-md gap-5 overflow-y-auto">
+    {groups.map((group: any, index: number) => (
+      <div
+        key={index}
+        className="flex gap-2 p-3 rounded-lg cursor-pointer hover:bg-gray-700"
+        onClick={() => selectGroup(group)}
+      >
+        <img
+          src={group.avatar || "/profile-icon.svg"}
+          alt={group.name}
+          className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+        />
+        <div className="overflow-hidden flex flex-col justify-center text-md gap-2">
+          <span className="text-white font-semibold truncate">
+            {group.name}
+          </span>
+          <span className="text-sm text-gray-400 truncate">
+            lastMessage
+          </span>
+        </div>
+      </div>
+    ))}
+  </div>
+)}
+
       </div>
 
       {(menuOpen || !selectedChat) && selectedChat && (
