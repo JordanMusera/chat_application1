@@ -25,7 +25,7 @@ app.use(cookieParser());
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/messages", messageRoutes);
-app.use("/group",groupRoutes);
+app.use("/groups",groupRoutes);
 
 const server = http.createServer(app);
 
