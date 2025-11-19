@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import crypto from "crypto";
-import { getIO } from "../socket";
 import { sql, pool, poolConnect } from "../config/db";
 import { Bit, Int, NVarChar } from "mssql";
 import { uploadFileToCloudinary } from "../services/cloudinaryService";
@@ -11,7 +10,6 @@ export const createGroup = async (req: Request, res: Response) => {
   let { group_members } = req.body;
   const avatar = req.file;
   try {
-    const io = getIO();
 
     if (!req.headers.authorization?.startsWith("Bearer ")) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -88,5 +86,46 @@ export const createGroup = async (req: Request, res: Response) => {
         message: "Server error",
         error: (error as Error).message,
       });
+  }
+};
+
+
+export const fetchGroups = async (req: Request, res: Response) => {
+  await poolConnect;
+
+  if (!req.headers.authorization?.startsWith("Bearer ")) {
+    return res.status(401).json({ success: false, message: "Unauthorized" });
+  }
+
+  const token = req.headers.authorization.split(" ")[1];
+  const user = await verifyToken(token);
+  const userId = user.id;
+
+  try {
+    const getGroupConvoRequest = new sql.Request(pool);
+    getGroupConvoRequest.input("UserId", Int, userId);
+
+    const query = `
+      SELECT 
+        gs.id,
+        gs.chat_id,
+        gs.name,
+        gs.description,
+        gs.avatar,
+        gs.allow_members_to_add,
+        gs.allow_members_to_post
+      FROM group_settings gs
+      INNER JOIN chatmembers cm ON cm.chat_id = gs.chat_id
+      WHERE cm.user_id = @UserId;
+    `;
+
+    const getGroupConvoResponse = await getGroupConvoRequest.query(query);
+
+    const groupsConvo = getGroupConvoResponse.recordset;
+
+    return res.status(200).json({ success: true, groups: groupsConvo });
+  } catch (error) {
+    console.error("Error fetching groups:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };

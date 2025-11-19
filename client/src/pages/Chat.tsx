@@ -3,7 +3,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { useSocket } from "../hooks/useSocket";
 import { v4 as uuidv4 } from "uuid";
 import {
-  BellFilled,
   CloseOutlined,
   MessageOutlined,
   PaperClipOutlined,
@@ -171,18 +170,12 @@ const Chat = () => {
       getUsersConv();
     };
 
-    const displayNotification1 = (data: any) => {
-      displayNotification(data);
-    };
-
     socket.on("receive_message", handleReceiveMessage);
     socket.on("newMessage", handleNewMessage);
-    socket.on("notification", displayNotification1);
 
     return () => {
       socket.off("receive_message", handleReceiveMessage);
       socket.off("newMessage", handleNewMessage);
-      socket.off("notification",displayNotification1)
     };
   }, [socket, chatId, selectedChat, user.id]);
 
@@ -192,7 +185,7 @@ const Chat = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${localStorage.getItem("token")}`
         },
         body: JSON.stringify({ searchWord }),
       });
@@ -276,6 +269,7 @@ const Chat = () => {
     const formData = new FormData();
     formData.append("newConvId", isNewChat ? newConvId : "");
     formData.append("chat_id", (selectedChat?.chat_id || 0).toString());
+    formData.append("sender_id", user.id.toString());
     formData.append("receiver_id", receiverId.toString());
     formData.append("content", input.trim());
 
@@ -375,33 +369,6 @@ const Chat = () => {
     );
   };
 
-  const displayNotification = (data: any) => {
-    toast(
-      <div
-        className="flex gap-2 items-center"
-      >
-        <BellFilled className="flex text-orange text-2xl" />
-
-        <div className="flex flex-col items-center">
-          <span className="font-semibold text-gray-800 text-sm">
-            {data.name}
-          </span>
-          <span className="text-gray-600 text-sm break-words">
-            {data.message}
-          </span>
-        </div>
-      </div>,
-      {
-        position: "top-right",
-        autoClose: 4000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      }
-    );
-  };
-
   return (
     <div className="flex flex-col md:flex-row h-[100dvh] bg-gray-800 relative">
       <div
@@ -485,10 +452,7 @@ const Chat = () => {
             <div className="flex flex-col items-center justify-center gap-3">
               <span>Join</span>
               <span className="text-xl font-extrabold">OR</span>
-              <button
-                className="text-blue-500 hover:cursor-pointer hover:underline"
-                onClick={() => navigate("/create_group")}
-              >
+              <button className="text-blue-500 hover:cursor-pointer hover:underline" onClick={()=>navigate("/create_group")}>
                 Create Group
               </button>
             </div>
