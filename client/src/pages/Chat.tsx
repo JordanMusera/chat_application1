@@ -185,6 +185,7 @@ const Chat = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`
         },
         body: JSON.stringify({ searchWord }),
       });
@@ -368,10 +369,6 @@ const Chat = () => {
     );
   };
 
-  const navigateToCreateGroup=()=>{
-    n
-  }
-
   return (
     <div className="flex flex-col md:flex-row h-[100dvh] bg-gray-800 relative">
       <div
@@ -455,7 +452,7 @@ const Chat = () => {
             <div className="flex flex-col items-center justify-center gap-3">
               <span>Join</span>
               <span className="text-xl font-extrabold">OR</span>
-              <button className="text-blue-500 hover:cursor-pointer hover:underline" onClick={()=>navigate}>
+              <button className="text-blue-500 hover:cursor-pointer hover:underline" onClick={()=>navigate("/create_group")}>
                 Create Group
               </button>
             </div>
