@@ -7,18 +7,19 @@
     "dev": "ts-node-dev --transpile-only server.ts",
     "build": "tsc",
     "start": "node dist/server.js"
-
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@sendgrid/mail": "^8.1.6",
     "@types/bcrypt": "^6.0.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/mssql": "^9.1.8",
     "@types/nodemailer": "^6.4.21",
+    "@types/sendgrid": "^2.0.31",
     "bcrypt": "^6.0.0",
     "cloudinary": "^2.8.0",
     "cookie-parser": "^1.4.7",
