@@ -5,7 +5,7 @@ import {
   create_jwt,
   generateOTP,
 } from "../functions/authFunctions";
-import { sendOTPToEmail } from "../services/mailtrapService";
+import { sendOTPToEmail } from "../services/mailService";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { uploadFileToCloudinary } from "../services/cloudinaryService";
