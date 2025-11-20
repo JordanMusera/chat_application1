@@ -72,7 +72,7 @@ export const postMessage = async (req: Request, res: Response) => {
 
   await poolConnect;
 
-  console.log("Chat id: ",chat_id)
+  console.log("Chat id: ", chat_id);
 
   if (!receiver_id || !sender_id || !content || !content.trim()) {
     return res.status(400).json({ success: false, message: "Invalid data" });
@@ -172,9 +172,21 @@ export const postMessage = async (req: Request, res: Response) => {
       timestamp: new Date().toISOString(),
     };
 
-    console.log(messageData)
+    const fetchIdRequest = new sql.Request(pool);
+    fetchIdRequest.input("ChatId", Int, chat_id);
+    const fetchIdResponse = await fetchIdRequest.query(
+      "SELECT user_id FROM chatmembers WHERE chat_id=@ChatId"
+    );
+
+    const receiversList = fetchIdResponse.recordset
+      .map((u) => u.user_id)
+      .filter((id) => id !== sender_id);
+
     io.to(activeChatId.toString()).emit("receive_message", messageData);
-    io.to(`user_${receiver_id}`).emit("newMessage", messageData);
+
+    for (let id of receiversList) {
+      io.to(`user_${id}`).emit("newMessage", messageData);
+    }
 
     return res.status(200).json({ success: true, message: messageData });
   } catch (error) {
