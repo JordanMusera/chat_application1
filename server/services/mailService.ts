@@ -4,16 +4,18 @@ import dotenv from "dotenv";
 dotenv.config();
 
 export const sendOTPToEmail = async (email: string, otp: string) => {
+  console.log("sendOTPToEmail started");
+  console.log(`Email: ${email}, OTP: ${otp}`);
+
   try {
     const transport = nodemailer.createTransport({
-      secure:true,
-      host:'smtp.gmail.com',
-      port:465,
+      service: "gmail",
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
     });
+    console.log("Transporter created");
 
     const mailOptions = {
       from: `"ETU CHAT APP" <${process.env.EMAIL_USER}>`,
@@ -28,10 +30,11 @@ export const sendOTPToEmail = async (email: string, otp: string) => {
       `,
     };
 
+    // Promise-based sendMail
     const info = await transport.sendMail(mailOptions);
-    console.log("OTP sent:", info.messageId);
-    return true;
+    console.log("OTP sent successfully:", info.response || info);
 
+    return true;
   } catch (err) {
     console.error("Email sending error:", err);
     return false;
