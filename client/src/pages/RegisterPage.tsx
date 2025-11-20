@@ -121,7 +121,7 @@ const RegisterPage = () => {
         </div>
 
         <input
-          type="email"
+          type="text"
           placeholder="Enter username"
           className="w-full p-3 rounded-2xl bg-gray-700 focus:ring-2 focus:ring-blue-500 outline-none"
           onChange={(e) => setUsername(e.target.value)}
