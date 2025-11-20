@@ -15,42 +15,54 @@ dotenv.config();
 
 export const registerUser = async (req: Request, res: Response) => {
   try {
+    console.log("registerUser started");
+
     const { name, email, password } = req.body;
     const image = req.file;
 
+    console.log("Received data:", { name, email, password, imageExists: !!image });
+
     if (!name || !email || !password) {
+      console.log("Validation failed: missing fields");
       return res
         .status(400)
         .json({ success: false, message: "All fields are required" });
     }
 
     await poolConnect;
+    console.log("Connected to SQL pool");
 
     let uploadedFile: { url: string; public_id: string } | null = null;
     if (image) {
-      const result = await uploadFileToCloudinary(
-        image.buffer,
-        image.originalname
-      );
+      console.log("Uploading image to Cloudinary...");
+      const result = await uploadFileToCloudinary(image.buffer, image.originalname);
+      console.log("Cloudinary result:", result);
+
       if (!("success" in result && result.success === false)) {
         uploadedFile = result as unknown as { url: string; public_id: string };
+        console.log("Uploaded file:", uploadedFile);
       }
     }
 
+    console.log("Checking if email already exists...");
     const checkRequest = new sql.Request(pool);
     checkRequest.input("Email", sql.NVarChar, email);
     const existingUsersResult = await checkRequest.query(
       "SELECT * FROM users WHERE email = @Email"
     );
+    console.log("Existing users query result:", existingUsersResult.recordset);
 
     if (existingUsersResult.recordset.length > 0) {
+      console.log("Email already registered");
       return res
         .status(400)
         .json({ success: false, message: "Email already registered" });
     }
 
+    console.log("Hashing password...");
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    console.log("Inserting user into database...");
     const insertRequest = new sql.Request(pool);
     insertRequest.input("Name", sql.NVarChar, name);
     insertRequest.input("Email", sql.NVarChar, email);
@@ -62,19 +74,25 @@ export const registerUser = async (req: Request, res: Response) => {
        OUTPUT INSERTED.id AS id
        VALUES (@Name, @Email, @Avatar, @Password)`
     );
+    console.log("Insert result:", insertResult.recordset);
 
     const userId = insertResult.recordset[0]?.id;
     if (!userId) throw new Error("User creation failed");
+    console.log("New user ID:", userId);
 
     const otp_code = generateOTP();
+    console.log("Generated OTP:", otp_code);
 
+    console.log("Checking existing OTP...");
     const otpRequest = new sql.Request(pool);
     otpRequest.input("UserId", sql.Int, userId);
     const existingOtpResult = await otpRequest.query(
       "SELECT * FROM otp_codes WHERE user_id = @UserId"
     );
+    console.log("Existing OTP query result:", existingOtpResult.recordset);
 
     if (existingOtpResult.recordset.length > 0) {
+      console.log("Updating existing OTP...");
       const updateOtpRequest = new sql.Request(pool);
       updateOtpRequest.input("Otp", sql.NVarChar, otp_code);
       updateOtpRequest.input("UserId", sql.Int, userId);
@@ -82,6 +100,7 @@ export const registerUser = async (req: Request, res: Response) => {
         "UPDATE otp_codes SET otp_code = @Otp, verified = 0 WHERE user_id = @UserId"
       );
     } else {
+      console.log("Inserting new OTP...");
       const insertOtpRequest = new sql.Request(pool);
       insertOtpRequest.input("UserId", sql.Int, userId);
       insertOtpRequest.input("Otp", sql.NVarChar, otp_code);
@@ -90,19 +109,22 @@ export const registerUser = async (req: Request, res: Response) => {
       );
     }
 
-    await sendOTPToEmail(email, otp_code);
+    console.log("Calling sendOTPToEmail...");
+    const otpResult = await sendOTPToEmail(email, otp_code);
+    console.log("sendOTPToEmail result:", otpResult);
 
     res.status(201).json({
       success: true,
       message: "User registered successfully. Check your email for OTP.",
     });
   } catch (error: any) {
-    console.error(error);
+    console.error("registerUser error:", error);
     res
       .status(500)
       .json({ success: false, message: error.message || "Server error" });
   }
 };
+
 
 export const signInUser = async (req: Request, res: Response) => {
   try {
