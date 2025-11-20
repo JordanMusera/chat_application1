@@ -180,7 +180,7 @@ export const postMessage = async (req: Request, res: Response) => {
 
     const receiversList = fetchIdResponse.recordset
       .map((u) => u.user_id)
-      .filter((id) => id !== sender_id);
+      .filter((id) => id.toString() !== sender_id);
 
     io.to(activeChatId.toString()).emit("receive_message", messageData);
 

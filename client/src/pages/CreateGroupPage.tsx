@@ -81,7 +81,7 @@ const CreateGroupPage = () => {
 
     try {
       setLoading(true);
-      const res = await fetch(`${API_URL}/group/create_group`, {
+      const res = await fetch(`${API_URL}/groups/create_group`, {
         method: "POST",
         headers:{
             Authorization: `Bearer ${localStorage.getItem("token")}`
