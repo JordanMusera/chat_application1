@@ -1,1 +1,1 @@
-export const API_URL = "https://etu-chat-server.onrender.com"
+export const API_URL = "https://chat-application1-jvvw.onrender.com"
