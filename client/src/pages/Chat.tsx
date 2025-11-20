@@ -4,6 +4,8 @@ import { useSocket } from "../hooks/useSocket";
 import { v4 as uuidv4 } from "uuid";
 import {
   CloseOutlined,
+  FileAddFilled,
+  GroupOutlined,
   MessageOutlined,
   PaperClipOutlined,
   SendOutlined,
@@ -509,6 +511,14 @@ const Chat = () => {
           </div>
         ) : (
           <div className="text-white font-bold flex flex-col text-md gap-5 overflow-y-auto">
+            <div
+              className="text-blue-500 text-md flex items-center gap-2 leading-none hover:text-blue-700 hover:cursor-pointer"
+              onClick={() => navigate("/create_group")}
+            >
+              <p className="m-0">Create group</p>
+              <GroupOutlined className="text-xl" />
+            </div>
+
             {groups.map((group: any, index: number) => (
               <div
                 key={index}
@@ -740,7 +750,12 @@ const Chat = () => {
           </>
         ) : (
           <div className="flex flex-1 items-center justify-center text-gray-700 text-lg font-medium text-center px-4">
-            Tap the menu to select a chat
+            <div className="flex flex-1 items-center justify-center">
+              <div className="flex items-center gap-2 text-gray-300 text-lg p-2 rounded-md">
+                <MessageOutlined className="text-lg" />
+                <span>Connect and chat with friends and family</span>
+              </div>
+            </div>
             <button
               onClick={() => setMenuOpen(true)}
               className="ml-2 px-3 py-1 bg-blue-600 text-white rounded-lg md:hidden"
