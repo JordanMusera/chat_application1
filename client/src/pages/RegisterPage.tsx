@@ -152,7 +152,7 @@ const RegisterPage = () => {
 
         <p className="text-white text-md">
           Have an account?{" "}
-          <b onClick={directToLogin} className="hover:cursor-pointer">
+          <b onClick={directToLogin} className="hover:cursor-pointer text-blue-500">
             Login
           </b>
         </p>
